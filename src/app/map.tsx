@@ -50,10 +50,6 @@ export default function Map({ episodes }: MapProps) {
     map.current.addControl(new maplibregl.NavigationControl());
 
     episodes.forEach((episode) => {
-      
-      console.log('Episode:', episode.fieldData.name);
-      console.log('Raw lat:', episode.fieldData['latitude-2'], 'Raw lng:', episode.fieldData['longitude-2']);
-
       const { name } = episode.fieldData;
       const latitude = parseFloat(episode.fieldData['latitude-2']);
       const longitude = parseFloat(episode.fieldData['longitude-2']);

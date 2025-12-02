@@ -2,8 +2,8 @@ export interface Episode {
     id: string;
     fieldData: {
       name: string;
-      latitude: string;
-      longitude: string;
+      'latitude-2': string;
+      'longitude-2': string;
       'episode-description'?: string;
       'location-name'?: string;
       'spotify-link'?: string;
