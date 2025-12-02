@@ -17,7 +17,9 @@ export async function GET() {
     );
 
     if (!response.ok) {
-      throw new Error(`Webflow API error: ${response.status}`);
+        const error = await response.text();
+        console.error('Webflow API error:', response.status, error);
+        throw new Error(`Webflow API error: ${response.status}`);
     }
 
     const data = (await response.json()) as { items: unknown[] };
