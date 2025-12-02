@@ -1,14 +1,5 @@
 import Map from './map';
-
-interface Episode {
-  id: string;
-  fieldData: {
-    name: string;
-    latitude: number;
-    longitude: number;
-    'episode-description'?: string;
-  };
-}
+import { Episode } from './types';
 
 async function getEpisodes(): Promise<Episode[]> {
   const collectionId = process.env.WEBFLOW_COLLECTION_ID;
@@ -37,7 +28,7 @@ async function getEpisodes(): Promise<Episode[]> {
 
 export default async function Home() {
   const episodes = await getEpisodes();
-  
+
   return (
     <main>
       <Map episodes={episodes} />
