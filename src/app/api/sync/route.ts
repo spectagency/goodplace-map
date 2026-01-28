@@ -25,6 +25,7 @@ interface WebflowPodcastFieldData {
   'spotify-link'?: string;
   'latitude-2'?: string | number;
   'longitude-2'?: string | number;
+  'location-coordinates'?: string; // Combined format: "lat, lng"
   'location-name'?: string;
   'published-date'?: string;
   tags?: string[];
@@ -164,15 +165,31 @@ async function syncPodcasts(
   for (const item of data.items || []) {
     const fieldData = item.fieldData as unknown as WebflowPodcastFieldData;
 
-    // Parse coordinates
-    const latitude =
-      typeof fieldData['latitude-2'] === 'string'
-        ? parseFloat(fieldData['latitude-2'])
-        : fieldData['latitude-2'];
-    const longitude =
-      typeof fieldData['longitude-2'] === 'string'
-        ? parseFloat(fieldData['longitude-2'])
-        : fieldData['longitude-2'];
+    // Parse coordinates - support both separate fields and combined format
+    let latitude: number | undefined;
+    let longitude: number | undefined;
+
+    // Try combined location-coordinates field first (format: "lat, lng")
+    if (fieldData['location-coordinates']) {
+      const coordString = fieldData['location-coordinates'];
+      const parts = coordString.split(',').map((s) => s.trim());
+      if (parts.length === 2) {
+        latitude = parseFloat(parts[0]);
+        longitude = parseFloat(parts[1]);
+      }
+    }
+
+    // Fall back to separate latitude-2/longitude-2 fields
+    if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
+      latitude =
+        typeof fieldData['latitude-2'] === 'string'
+          ? parseFloat(fieldData['latitude-2'])
+          : fieldData['latitude-2'];
+      longitude =
+        typeof fieldData['longitude-2'] === 'string'
+          ? parseFloat(fieldData['longitude-2'])
+          : fieldData['longitude-2'];
+    }
 
     if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
       console.log('Skipping podcast without valid coordinates:', item.id);
