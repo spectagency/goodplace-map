@@ -10,5 +10,13 @@
   },
   "observability": {
     "enabled": true
-  }
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "good-place-db",
+      "database_id": "placeholder-will-be-generated",
+      "migrations_dir": "migrations"
+    }
+  ]
 }
