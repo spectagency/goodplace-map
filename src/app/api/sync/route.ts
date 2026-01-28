@@ -38,9 +38,16 @@ interface WebflowTagFieldData {
 export async function POST(request: Request) {
   const { env } = await getCloudflareContext({ async: true });
 
+  // Cast env to include our custom variables
+  const typedEnv = env as typeof env & {
+    WEBFLOW_SITE_API_TOKEN: string;
+    WEBFLOW_COLLECTION_ID: string;
+    WEBFLOW_TAGS_COLLECTION_ID?: string;
+  };
+
   // Check for authorization (simple bearer token check)
   const authHeader = request.headers.get('authorization');
-  const expectedToken = env.WEBFLOW_SITE_API_TOKEN;
+  const expectedToken = typedEnv.WEBFLOW_SITE_API_TOKEN;
 
   if (!authHeader || authHeader !== `Bearer ${expectedToken}`) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
@@ -50,13 +57,13 @@ export async function POST(request: Request) {
 
   try {
     // Fetch and sync tags first (podcasts reference tags)
-    const tagsCollectionId = process.env.WEBFLOW_TAGS_COLLECTION_ID;
+    const tagsCollectionId = typedEnv.WEBFLOW_TAGS_COLLECTION_ID;
     if (tagsCollectionId) {
       await syncTags(db, tagsCollectionId, expectedToken);
     }
 
     // Fetch and sync podcasts
-    const podcastsCollectionId = process.env.WEBFLOW_COLLECTION_ID;
+    const podcastsCollectionId = typedEnv.WEBFLOW_COLLECTION_ID;
     if (podcastsCollectionId) {
       const count = await syncPodcasts(db, podcastsCollectionId, expectedToken);
       return Response.json({
