@@ -2,8 +2,6 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { getDb, tags } from '@/db';
 import { asc } from 'drizzle-orm';
 
-export const runtime = 'edge';
-
 export async function GET() {
   const { env } = await getCloudflareContext({ async: true });
   const db = getDb(env.DB);
