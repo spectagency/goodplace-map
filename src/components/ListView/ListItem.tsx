@@ -17,10 +17,14 @@ export function ListItem({ podcast, onClick }: ListItemProps) {
   return (
     <button
       onClick={onClick}
-      className="w-full flex gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors text-left"
+      className="w-full grid grid-cols-[auto_1fr] gap-3 px-3 py-2 hover:bg-black/5 rounded-lg transition-colors text-left"
+      style={{ gridTemplateRows: '1fr' }}
     >
-      {/* Thumbnail */}
-      <div className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
+      {/* Thumbnail - square, height matches row */}
+      <div
+        className="rounded-lg overflow-hidden bg-gray-100"
+        style={{ aspectRatio: '1/1', height: '100%' }}
+      >
         {podcast.thumbnailUrl ? (
           <img
             src={podcast.thumbnailUrl}
@@ -35,17 +39,17 @@ export function ListItem({ podcast, onClick }: ListItemProps) {
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0">
-        <h3 className="font-semibold text-gray-900 truncate">
+      <div className="min-w-0 flex flex-col justify-center py-1">
+        <h3 className="text-[1.125em] font-semibold text-gray-900 truncate leading-none">
           {podcast.title}
         </h3>
         {podcast.description && (
-          <p className="text-sm text-gray-600 line-clamp-2 mt-0.5">
+          <p className="text-[1em] text-gray-600 line-clamp-2 mt-0.5">
             {truncate(podcast.description, 100)}
           </p>
         )}
         {podcast.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-2">
+          <div className="flex flex-wrap gap-1 mt-1">
             {podcast.tags.map((tag) => (
               <TagPill key={tag.id} name={tag.name} size="small" />
             ))}

@@ -4,11 +4,13 @@ interface ListHeaderProps {
   onClose: () => void;
   totalCount: number;
   filteredCount: number;
+  onFilterToggle: () => void;
+  isFilterOpen: boolean;
 }
 
-export function ListHeader({ onClose, totalCount, filteredCount }: ListHeaderProps) {
+export function ListHeader({ onClose, totalCount, filteredCount, onFilterToggle, isFilterOpen }: ListHeaderProps) {
   return (
-    <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
+    <div className="flex items-center justify-between px-4 py-4 border-b border-black/10">
       <div className="flex items-center gap-3">
         {/* List icon */}
         <svg
@@ -35,8 +37,12 @@ export function ListHeader({ onClose, totalCount, filteredCount }: ListHeaderPro
       </div>
       {/* Filter icon */}
       <button
-        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+        onClick={onFilterToggle}
+        className={`p-2 rounded-lg transition-colors ${
+          isFilterOpen ? 'bg-[#60977F]/20 text-[#60977F]' : 'hover:bg-black/5 text-gray-600'
+        }`}
         aria-label="Filter"
+        aria-expanded={isFilterOpen}
       >
         <svg
           width="20"
@@ -47,7 +53,6 @@ export function ListHeader({ onClose, totalCount, filteredCount }: ListHeaderPro
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="text-gray-600"
         >
           <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
         </svg>

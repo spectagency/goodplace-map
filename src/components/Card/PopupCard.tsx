@@ -129,61 +129,50 @@ export function PopupCard() {
       <Overlay isOpen={isOpen} zIndex={45} />
       {/* Flexbox wrapper for reliable centering */}
       <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
-        <div
-          ref={cardRef}
-          className="pointer-events-auto
-            w-[90vw] max-w-[450px] max-h-[80vh]
-            bg-white rounded-xl shadow-2xl
-            overflow-hidden flex flex-col
-            animate-in fade-in duration-200"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="card-title"
-        >
-        {/* Thumbnail section */}
-        {podcast.thumbnailUrl ? (
-          <div className="relative w-full aspect-video bg-gray-100 flex-shrink-0">
-            <img
-              src={podcast.thumbnailUrl}
-              alt={podcast.title}
-              className="w-full h-full object-cover"
-            />
-            <CloseButton
-              onClick={closeCard}
-              variant="overlay"
-              className="absolute top-3 right-3"
-            />
-          </div>
-        ) : youtubeEmbedUrl ? (
-          <div className="relative w-full aspect-video bg-gray-100 flex-shrink-0">
-            <iframe
-              src={youtubeEmbedUrl}
-              className="w-full h-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              title={podcast.title}
-            />
-            <CloseButton
-              onClick={closeCard}
-              variant="overlay"
-              className="absolute top-3 right-3"
-            />
-          </div>
-        ) : (
-          <div className="relative flex-shrink-0">
-            <CloseButton
-              onClick={closeCard}
-              variant="default"
-              className="absolute top-3 right-3"
-            />
-          </div>
-        )}
+        {/* Wrapper for card + external close button */}
+        <div ref={cardRef} className="relative pointer-events-auto">
+          {/* Close button outside card */}
+          <CloseButton
+            onClick={closeCard}
+            variant="overlay"
+            className="absolute -top-3 -right-3 z-10"
+          />
+          <div
+            className="w-[90vw] max-w-[450px] max-h-[80vh]
+              bg-white/80 backdrop-blur-[10px] rounded-[24px]
+              shadow-[0_0_10px_rgba(117,117,117,0.25)]
+              overflow-hidden flex flex-col p-3
+              animate-in fade-in duration-200"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="card-title"
+          >
+          {/* Thumbnail/Video section */}
+          {podcast.thumbnailUrl ? (
+            <div className="relative w-full aspect-video bg-gray-100 flex-shrink-0 rounded-[12px] overflow-hidden">
+              <img
+                src={podcast.thumbnailUrl}
+                alt={podcast.title}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          ) : youtubeEmbedUrl ? (
+            <div className="relative w-full aspect-video bg-gray-100 flex-shrink-0 rounded-[12px] overflow-hidden">
+              <iframe
+                src={youtubeEmbedUrl}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                title={podcast.title}
+              />
+            </div>
+          ) : null}
 
         {/* Content section */}
-        <div className="flex-1 overflow-y-auto p-5">
+        <div className="flex-1 overflow-y-auto px-2 pt-2 pb-3">
           {/* Location name */}
           {podcast.locationName && (
-            <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+            <p className="text-xs text-gray-500 uppercase tracking-wide mb-0.5">
               {podcast.locationName}
             </p>
           )}
@@ -191,7 +180,7 @@ export function PopupCard() {
           {/* Title */}
           <h2
             id="card-title"
-            className="text-xl font-bold text-gray-900 mb-3"
+            className="text-xl font-bold text-gray-900 mb-2"
           >
             {podcast.title}
           </h2>
@@ -261,8 +250,9 @@ export function PopupCard() {
               Back to list
             </button>
           )}
+          </div>
         </div>
-      </div>
+        </div>
       </div>
     </>
   );

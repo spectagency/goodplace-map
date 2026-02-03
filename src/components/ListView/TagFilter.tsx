@@ -14,14 +14,14 @@ export function TagFilter({ tags }: TagFilterProps) {
   if (tags.length === 0) return null;
 
   return (
-    <div className="px-4 py-3 border-b border-gray-100">
+    <div className="px-4 py-3 border-b border-black/10">
       <div className="flex flex-wrap gap-2">
         <button
           onClick={clearTagFilters}
           className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
             activeFilters.length === 0
               ? 'bg-[#60977F] text-white'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              : 'bg-black/5 text-gray-600 hover:bg-black/10'
           }`}
         >
           All
@@ -35,7 +35,7 @@ export function TagFilter({ tags }: TagFilterProps) {
               className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 isActive
                   ? 'bg-[#60977F] text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-black/5 text-gray-600 hover:bg-black/10'
               }`}
             >
               {tag.name}

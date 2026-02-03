@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useAppStore, useIsListOpen, useFilteredPodcasts } from '@/store/useAppStore';
 import { ListHeader } from './ListHeader';
 import { TagFilter } from './TagFilter';
@@ -10,6 +10,7 @@ export function ListViewModal() {
   const listRef = useRef<HTMLDivElement>(null);
   const isOpen = useIsListOpen();
   const filteredPodcasts = useFilteredPodcasts();
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const {
     podcasts,
     tags,
@@ -73,7 +74,8 @@ export function ListViewModal() {
         <div
           className="pointer-events-auto
             w-[90vw] max-w-[550px] h-[85vh]
-            bg-white rounded-xl shadow-2xl
+            bg-white/80 backdrop-blur-[10px] rounded-[24px]
+            shadow-[0_0_10px_rgba(117,117,117,0.25)]
             overflow-hidden flex flex-col
             animate-in fade-in duration-200"
           role="dialog"
@@ -84,9 +86,11 @@ export function ListViewModal() {
             onClose={closeListView}
             totalCount={podcasts.length}
             filteredCount={filteredPodcasts.length}
+            onFilterToggle={() => setIsFilterOpen(!isFilterOpen)}
+            isFilterOpen={isFilterOpen}
           />
 
-          <TagFilter tags={tags} />
+          {isFilterOpen && <TagFilter tags={tags} />}
 
           <div
             ref={listRef}
@@ -97,7 +101,7 @@ export function ListViewModal() {
                 No episodes match your filters
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-0">
                 {filteredPodcasts.map((podcast) => (
                   <ListItem
                     key={podcast.id}
