@@ -159,7 +159,7 @@ export async function getPodcastsFromWebflow(
 
   if (!collectionId || !token) {
     console.error('Missing Webflow configuration');
-    throw new Error('Missing Webflow configuration');
+    return [];
   }
 
   // Create a map of tag IDs to Tag objects for quick lookup
