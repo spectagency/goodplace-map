@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useMemo, useCallback } from 'react';
+import { useEffect, useRef, useMemo, useCallback, useState } from 'react';
 import {
   Map,
   MapControls,
@@ -93,6 +93,33 @@ export function MapContainer({ initialPodcasts = [] }: MapContainerProps) {
     [filteredPodcasts, openCard]
   );
 
+  // Handle cluster click - adaptive zoom based on cluster size
+  const handleClusterClick = useCallback(
+    (clusterId: number, coordinates: [number, number], pointCount: number) => {
+      // Calculate zoom increment based on cluster size
+      // Larger clusters get more aggressive zoom
+      let zoomIncrement: number;
+      if (pointCount >= 40) {
+        zoomIncrement = 5;
+      } else if (pointCount >= 25) {
+        zoomIncrement = 4;
+      } else if (pointCount >= 10) {
+        zoomIncrement = 3;
+      } else {
+        zoomIncrement = 2;
+      }
+
+      // This will be handled by AdaptiveClusterZoom component
+      // which has access to the map instance
+      window.dispatchEvent(
+        new CustomEvent('cluster-click', {
+          detail: { coordinates, zoomIncrement },
+        })
+      );
+    },
+    []
+  );
+
   return (
     <div className="relative w-full h-screen">
       <Map
@@ -111,13 +138,15 @@ export function MapContainer({ initialPodcasts = [] }: MapContainerProps) {
           clusterSizes={[28, 36, 48]}
           pointColor={PRIMARY_GREEN}
           pointRadius={10}
-          clusterRadius={50}
-          clusterMaxZoom={14}
+          clusterRadius={30}
+          clusterMaxZoom={12}
           clusterTextSize={14}
           clusterTextWeight="bold"
           layerIds={CLUSTER_LAYER_IDS}
           onPointClick={handlePointClick}
+          onClusterClick={handleClusterClick}
         />
+        <AdaptiveClusterZoom />
         <MapControls position="bottom-right" showZoom />
         <FitBoundsOnLoad podcasts={filteredPodcasts} />
         <CleanupMapStyle />
@@ -125,6 +154,7 @@ export function MapContainer({ initialPodcasts = [] }: MapContainerProps) {
         <InitialPodcastPanHandler />
         <SelectedPinIndicator />
         <PanToSelectedPin />
+        <ZoomLevelIndicator />
       </Map>
       <ListViewToggle />
     </div>
@@ -174,7 +204,7 @@ function FitBoundsOnLoad({ podcasts }: { podcasts: Podcast[] }) {
 
     map.fitBounds(bounds, {
       padding: 50,
-      maxZoom: 14,
+      maxZoom: 12,
       duration: 1000,
     });
 
@@ -323,4 +353,65 @@ function PanToSelectedPin() {
   }, [isCardOpen]);
 
   return null;
+}
+
+// Component to handle adaptive cluster zoom
+function AdaptiveClusterZoom() {
+  const { map, isLoaded } = useMap();
+
+  useEffect(() => {
+    if (!map || !isLoaded) return;
+
+    const handleClusterClick = (e: Event) => {
+      const { coordinates, zoomIncrement } = (e as CustomEvent).detail;
+      const currentZoom = map.getZoom();
+      const targetZoom = Math.min(currentZoom + zoomIncrement, 18);
+
+      map.easeTo({
+        center: coordinates,
+        zoom: targetZoom,
+        duration: 500,
+      });
+    };
+
+    window.addEventListener('cluster-click', handleClusterClick);
+
+    return () => {
+      window.removeEventListener('cluster-click', handleClusterClick);
+    };
+  }, [map, isLoaded]);
+
+  return null;
+}
+
+// Component to display current zoom level
+function ZoomLevelIndicator() {
+  const { map, isLoaded } = useMap();
+  const [zoom, setZoom] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!map || !isLoaded) return;
+
+    // Set initial zoom
+    setZoom(Math.round(map.getZoom() * 10) / 10);
+
+    // Update zoom on change
+    const handleZoom = () => {
+      setZoom(Math.round(map.getZoom() * 10) / 10);
+    };
+
+    map.on('zoom', handleZoom);
+
+    return () => {
+      map.off('zoom', handleZoom);
+    };
+  }, [map, isLoaded]);
+
+  if (zoom === null) return null;
+
+  return (
+    <div className="absolute bottom-4 right-20 bg-white/80 backdrop-blur-sm px-2 py-1 rounded text-xs font-mono text-gray-600 shadow-sm">
+      z{zoom}
+    </div>
+  );
 }
