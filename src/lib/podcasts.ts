@@ -26,6 +26,12 @@ interface WebflowTag {
   };
 }
 
+export interface WebflowEnv {
+  WEBFLOW_SITE_API_TOKEN: string;
+  WEBFLOW_COLLECTION_ID: string;
+  WEBFLOW_TAGS_COLLECTION_ID?: string;
+}
+
 // Parse coordinates from Google Maps format: "52.09207285741166, 4.277502843983451"
 function parseCoordinates(coordString: string): { latitude: number; longitude: number } | null {
   const parts = coordString.split(',').map((s) => s.trim());
@@ -95,9 +101,9 @@ function transformEpisode(
   };
 }
 
-export async function getTags(): Promise<Tag[]> {
-  const collectionId = process.env.WEBFLOW_TAGS_COLLECTION_ID;
-  const token = process.env.WEBFLOW_SITE_API_TOKEN;
+export async function getTagsFromWebflow(env: WebflowEnv): Promise<Tag[]> {
+  const collectionId = env.WEBFLOW_TAGS_COLLECTION_ID;
+  const token = env.WEBFLOW_SITE_API_TOKEN;
 
   if (!collectionId || !token) {
     console.error('Missing Webflow tags configuration');
@@ -111,7 +117,6 @@ export async function getTags(): Promise<Tag[]> {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-        next: { revalidate: 60 },
       }
     );
 
@@ -121,24 +126,40 @@ export async function getTags(): Promise<Tag[]> {
     }
 
     const data = (await response.json()) as { items: WebflowTag[] };
-    return data.items.map((item) => ({
-      id: item.id,
-      name: item.fieldData.name,
-      slug: item.fieldData.slug || item.fieldData.name.toLowerCase().replace(/\s+/g, '-'),
-    }));
+    return data.items
+      .map((item) => ({
+        id: item.id,
+        name: item.fieldData.name,
+        slug: item.fieldData.slug || item.fieldData.name.toLowerCase().replace(/\s+/g, '-'),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   } catch (error) {
-    console.error('Error fetching tags:', error);
-    return [];
+    console.error('Error fetching tags from Webflow:', error);
+    throw error; // Re-throw to let caller handle
   }
 }
 
-export async function getPodcasts(tags: Tag[]): Promise<Podcast[]> {
-  const collectionId = process.env.WEBFLOW_COLLECTION_ID;
-  const token = process.env.WEBFLOW_SITE_API_TOKEN;
+// Legacy function for backwards compatibility
+export async function getTags(): Promise<Tag[]> {
+  const env: WebflowEnv = {
+    WEBFLOW_SITE_API_TOKEN: process.env.WEBFLOW_SITE_API_TOKEN || '',
+    WEBFLOW_COLLECTION_ID: process.env.WEBFLOW_COLLECTION_ID || '',
+    WEBFLOW_TAGS_COLLECTION_ID: process.env.WEBFLOW_TAGS_COLLECTION_ID,
+  };
+  return getTagsFromWebflow(env);
+}
+
+export async function getPodcastsFromWebflow(
+  env: WebflowEnv,
+  tags: Tag[],
+  filterTagIds?: string[]
+): Promise<Podcast[]> {
+  const collectionId = env.WEBFLOW_COLLECTION_ID;
+  const token = env.WEBFLOW_SITE_API_TOKEN;
 
   if (!collectionId || !token) {
     console.error('Missing Webflow configuration');
-    return [];
+    throw new Error('Missing Webflow configuration');
   }
 
   // Create a map of tag IDs to Tag objects for quick lookup
@@ -151,26 +172,50 @@ export async function getPodcasts(tags: Tag[]): Promise<Podcast[]> {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-        next: { revalidate: 60 },
       }
     );
 
     if (!response.ok) {
       console.error('Failed to fetch from Webflow:', response.statusText);
-      return [];
+      throw new Error(`Webflow API error: ${response.statusText}`);
     }
 
     const data = (await response.json()) as { items: WebflowEpisode[] };
 
-    const podcasts = data.items
+    let podcasts = data.items
       .map((episode) => transformEpisode(episode, tagsMap))
       .filter((p): p is Podcast => p !== null);
 
+    // Apply tag filter if specified
+    if (filterTagIds && filterTagIds.length > 0) {
+      podcasts = podcasts.filter((podcast) =>
+        podcast.tags.some((tag) => filterTagIds.includes(tag.id))
+      );
+    }
+
+    // Sort by published date (newest first)
+    podcasts.sort((a, b) => {
+      if (!a.publishedAt && !b.publishedAt) return 0;
+      if (!a.publishedAt) return 1;
+      if (!b.publishedAt) return -1;
+      return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+    });
+
     return podcasts;
   } catch (error) {
-    console.error('Error fetching podcasts:', error);
-    return [];
+    console.error('Error fetching podcasts from Webflow:', error);
+    throw error; // Re-throw to let caller handle
   }
+}
+
+// Legacy function for backwards compatibility
+export async function getPodcasts(tags: Tag[]): Promise<Podcast[]> {
+  const env: WebflowEnv = {
+    WEBFLOW_SITE_API_TOKEN: process.env.WEBFLOW_SITE_API_TOKEN || '',
+    WEBFLOW_COLLECTION_ID: process.env.WEBFLOW_COLLECTION_ID || '',
+    WEBFLOW_TAGS_COLLECTION_ID: process.env.WEBFLOW_TAGS_COLLECTION_ID,
+  };
+  return getPodcastsFromWebflow(env, tags);
 }
 
 export async function getPodcastBySlug(slug: string): Promise<{
