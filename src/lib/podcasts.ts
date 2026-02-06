@@ -1,4 +1,8 @@
 import type { Podcast, Tag } from '@/types';
+import { parseCoordinates, type WebflowEnv } from './shared';
+
+// Re-export for backward compatibility
+export type { WebflowEnv } from './shared';
 
 interface WebflowEpisode {
   id: string;
@@ -24,24 +28,6 @@ interface WebflowTag {
     name: string;
     slug?: string;
   };
-}
-
-export interface WebflowEnv {
-  WEBFLOW_SITE_API_TOKEN: string;
-  WEBFLOW_COLLECTION_ID: string;
-  WEBFLOW_TAGS_COLLECTION_ID?: string;
-}
-
-// Parse coordinates from Google Maps format: "52.09207285741166, 4.277502843983451"
-function parseCoordinates(coordString: string): { latitude: number; longitude: number } | null {
-  const parts = coordString.split(',').map((s) => s.trim());
-  if (parts.length !== 2) return null;
-
-  const latitude = parseFloat(parts[0]);
-  const longitude = parseFloat(parts[1]);
-
-  if (isNaN(latitude) || isNaN(longitude)) return null;
-  return { latitude, longitude };
 }
 
 // Transform Webflow episode to our Podcast format
@@ -85,6 +71,7 @@ function transformEpisode(
   return {
     id: episode.id,
     webflowItemId: episode.id,
+    type: 'podcast',
     title: episode.fieldData.name,
     slug: episode.fieldData.slug || null,
     description: episode.fieldData['episode-description'] || null,

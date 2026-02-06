@@ -1,48 +1,104 @@
 'use client';
 
-import { useAppStore, useActiveTagFilters } from '@/store/useAppStore';
-import type { Tag } from '@/types';
+import { useAppStore, useActiveTagFilters, useActiveContentTypeFilters } from '@/store/useAppStore';
+import type { Tag, ContentType } from '@/types';
+import { CONTENT_TYPE_CONFIG } from '@/types';
 
 interface TagFilterProps {
   tags: Tag[];
 }
 
-export function TagFilter({ tags }: TagFilterProps) {
-  const activeFilters = useActiveTagFilters();
-  const { toggleTagFilter, clearTagFilters } = useAppStore();
+const CONTENT_TYPES: ContentType[] = ['podcast', 'place', 'event'];
 
-  if (tags.length === 0) return null;
+export function TagFilter({ tags }: TagFilterProps) {
+  const activeTagFilters = useActiveTagFilters();
+  const activeContentTypeFilters = useActiveContentTypeFilters();
+  const {
+    toggleTagFilter,
+    clearTagFilters,
+    toggleContentTypeFilter,
+    clearContentTypeFilters,
+  } = useAppStore();
+
+  const clearAllFilters = () => {
+    clearTagFilters();
+    clearContentTypeFilters();
+  };
 
   return (
-    <div className="px-4 py-3 border-b border-black/10">
-      <div className="flex flex-wrap gap-2">
-        <button
-          onClick={clearTagFilters}
-          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-            activeFilters.length === 0
-              ? 'bg-[#60977F] text-white'
-              : 'bg-black/5 text-gray-600 hover:bg-black/10'
-          }`}
-        >
-          All
-        </button>
-        {tags.map((tag) => {
-          const isActive = activeFilters.includes(tag.id);
-          return (
+    <div className="px-4 py-3 border-b border-black/10 space-y-3">
+      {/* Content type filters */}
+      <div>
+        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+          Type
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={clearContentTypeFilters}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              activeContentTypeFilters.length === 0
+                ? 'bg-gray-800 text-white'
+                : 'bg-black/5 text-gray-600 hover:bg-black/10'
+            }`}
+          >
+            All Types
+          </button>
+          {CONTENT_TYPES.map((type) => {
+            const config = CONTENT_TYPE_CONFIG[type];
+            const isActive = activeContentTypeFilters.includes(type);
+            return (
+              <button
+                key={type}
+                onClick={() => toggleContentTypeFilter(type)}
+                className="px-3 py-1.5 rounded-full text-sm font-medium transition-colors"
+                style={{
+                  backgroundColor: isActive ? config.pinColor : 'rgba(0,0,0,0.05)',
+                  color: isActive ? (type === 'place' ? '#333' : 'white') : '#4b5563',
+                }}
+              >
+                {config.pluralLabel}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Tag filters */}
+      {tags.length > 0 && (
+        <div>
+          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+            Tags
+          </div>
+          <div className="flex flex-wrap gap-2">
             <button
-              key={tag.id}
-              onClick={() => toggleTagFilter(tag.id)}
+              onClick={clearAllFilters}
               className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                isActive
+                activeTagFilters.length === 0 && activeContentTypeFilters.length === 0
                   ? 'bg-[#60977F] text-white'
                   : 'bg-black/5 text-gray-600 hover:bg-black/10'
               }`}
             >
-              {tag.name}
+              All
             </button>
-          );
-        })}
-      </div>
+            {tags.map((tag) => {
+              const isActive = activeTagFilters.includes(tag.id);
+              return (
+                <button
+                  key={tag.id}
+                  onClick={() => toggleTagFilter(tag.id)}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-[#60977F] text-white'
+                      : 'bg-black/5 text-gray-600 hover:bg-black/10'
+                  }`}
+                >
+                  {tag.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

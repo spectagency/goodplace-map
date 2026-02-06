@@ -1,5 +1,8 @@
 import { sqliteTable, text, real, primaryKey, index } from 'drizzle-orm/sqlite-core';
 
+// ============================================
+// PODCASTS
+// ============================================
 export const podcasts = sqliteTable('podcasts', {
   id: text('id').primaryKey(),
   webflowItemId: text('webflow_item_id').unique().notNull(),
@@ -19,13 +22,6 @@ export const podcasts = sqliteTable('podcasts', {
   index('idx_podcasts_coordinates').on(table.latitude, table.longitude),
 ]);
 
-export const tags = sqliteTable('tags', {
-  id: text('id').primaryKey(),
-  webflowItemId: text('webflow_item_id').unique().notNull(),
-  name: text('name').notNull(),
-  slug: text('slug'),
-});
-
 export const podcastTags = sqliteTable('podcast_tags', {
   podcastId: text('podcast_id').notNull().references(() => podcasts.id, { onDelete: 'cascade' }),
   tagId: text('tag_id').notNull().references(() => tags.id, { onDelete: 'cascade' }),
@@ -35,7 +31,88 @@ export const podcastTags = sqliteTable('podcast_tags', {
   index('idx_podcast_tags_podcast_id').on(table.podcastId),
 ]);
 
-export type Podcast = typeof podcasts.$inferSelect;
+// ============================================
+// PLACES (Good Places - cafes, venues, etc.)
+// ============================================
+export const places = sqliteTable('places', {
+  id: text('id').primaryKey(),
+  webflowItemId: text('webflow_item_id').unique().notNull(),
+  title: text('title').notNull(),
+  slug: text('slug'),
+  description: text('description'),
+  thumbnailUrl: text('thumbnail_url'),
+  latitude: real('latitude').notNull(),
+  longitude: real('longitude').notNull(),
+  locationName: text('location_name'),
+  address: text('address'),
+  websiteUrl: text('website_url'),
+  openingHours: text('opening_hours'),
+  createdAt: text('created_at'),
+  updatedAt: text('updated_at'),
+}, (table) => [
+  index('idx_places_coordinates').on(table.latitude, table.longitude),
+]);
+
+export const placeTags = sqliteTable('place_tags', {
+  placeId: text('place_id').notNull().references(() => places.id, { onDelete: 'cascade' }),
+  tagId: text('tag_id').notNull().references(() => tags.id, { onDelete: 'cascade' }),
+}, (table) => [
+  primaryKey({ columns: [table.placeId, table.tagId] }),
+  index('idx_place_tags_tag_id').on(table.tagId),
+  index('idx_place_tags_place_id').on(table.placeId),
+]);
+
+// ============================================
+// EVENTS (Good Events - with Google Playlist)
+// ============================================
+export const events = sqliteTable('events', {
+  id: text('id').primaryKey(),
+  webflowItemId: text('webflow_item_id').unique().notNull(),
+  title: text('title').notNull(),
+  slug: text('slug'),
+  description: text('description'),
+  thumbnailUrl: text('thumbnail_url'),
+  latitude: real('latitude').notNull(),
+  longitude: real('longitude').notNull(),
+  locationName: text('location_name'),
+  eventDate: text('event_date'),
+  endDate: text('end_date'),
+  googlePlaylistUrl: text('google_playlist_url'),
+  eventUrl: text('event_url'),
+  createdAt: text('created_at'),
+  updatedAt: text('updated_at'),
+}, (table) => [
+  index('idx_events_coordinates').on(table.latitude, table.longitude),
+  index('idx_events_date').on(table.eventDate),
+]);
+
+export const eventTags = sqliteTable('event_tags', {
+  eventId: text('event_id').notNull().references(() => events.id, { onDelete: 'cascade' }),
+  tagId: text('tag_id').notNull().references(() => tags.id, { onDelete: 'cascade' }),
+}, (table) => [
+  primaryKey({ columns: [table.eventId, table.tagId] }),
+  index('idx_event_tags_tag_id').on(table.tagId),
+  index('idx_event_tags_event_id').on(table.eventId),
+]);
+
+// ============================================
+// TAGS (shared across all content types)
+// ============================================
+export const tags = sqliteTable('tags', {
+  id: text('id').primaryKey(),
+  webflowItemId: text('webflow_item_id').unique().notNull(),
+  name: text('name').notNull(),
+  slug: text('slug'),
+});
+
+// ============================================
+// Type exports
+// ============================================
+export type DbPodcast = typeof podcasts.$inferSelect;
 export type NewPodcast = typeof podcasts.$inferInsert;
+export type DbPlace = typeof places.$inferSelect;
+export type NewPlace = typeof places.$inferInsert;
+export type DbEvent = typeof events.$inferSelect;
+export type NewEvent = typeof events.$inferInsert;
 export type Tag = typeof tags.$inferSelect;
 export type NewTag = typeof tags.$inferInsert;

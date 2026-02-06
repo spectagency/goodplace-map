@@ -1,5 +1,14 @@
 import { create } from 'zustand';
-import type { AppStore, Podcast, Tag, MapBounds } from '@/types';
+import type {
+  AppStore,
+  Podcast,
+  Place,
+  Event,
+  MapItem,
+  Tag,
+  MapBounds,
+  ContentType
+} from '@/types';
 
 // Default map center: Netherlands
 const DEFAULT_CENTER: [number, number] = [5.1214, 52.0907];
@@ -8,6 +17,8 @@ const DEFAULT_ZOOM = 7;
 export const useAppStore = create<AppStore>((set, get) => ({
   // Initial state - Data
   podcasts: [],
+  places: [],
+  events: [],
   tags: [],
   isLoading: true,
   error: null,
@@ -22,7 +33,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   // Initial state - Card
   card: {
-    selectedPodcast: null,
+    selectedItem: null,
     isOpen: false,
     openedFromList: false,
     isDescriptionExpanded: false,
@@ -34,16 +45,21 @@ export const useAppStore = create<AppStore>((set, get) => ({
     isOpen: false,
     scrollPosition: 0,
     activeTagFilters: [],
+    activeContentTypeFilters: [],
   },
 
   // Initial state - Initial Load (for URL-based navigation)
   initialLoad: {
-    pendingPodcast: null,
+    pendingItem: null,
     pendingNotFoundMessage: null,
   },
 
   // Data actions
   setPodcasts: (podcasts: Podcast[]) => set({ podcasts, isLoading: false }),
+
+  setPlaces: (places: Place[]) => set({ places }),
+
+  setEvents: (events: Event[]) => set({ events }),
 
   setTags: (tags: Tag[]) => set({ tags }),
 
@@ -65,10 +81,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
     set((state) => ({ map: { ...state.map, isLocked } })),
 
   // Card actions
-  openCard: (podcast: Podcast, fromList: boolean = false, notFoundMessage: string | null = null) =>
+  openCard: (item: MapItem, fromList: boolean = false, notFoundMessage: string | null = null) =>
     set({
       card: {
-        selectedPodcast: podcast,
+        selectedItem: item,
         isOpen: true,
         openedFromList: fromList,
         isDescriptionExpanded: false,
@@ -80,7 +96,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   closeCard: () =>
     set({
       card: {
-        selectedPodcast: null,
+        selectedItem: null,
         isOpen: false,
         openedFromList: false,
         isDescriptionExpanded: false,
@@ -98,18 +114,18 @@ export const useAppStore = create<AppStore>((set, get) => ({
     })),
 
   // Initial load actions (for URL-based navigation - pan first, then open card)
-  setPendingInitialPodcast: (podcast: Podcast, notFoundMessage: string | null = null) =>
+  setPendingInitialItem: (item: MapItem, notFoundMessage: string | null = null) =>
     set({
       initialLoad: {
-        pendingPodcast: podcast,
+        pendingItem: item,
         pendingNotFoundMessage: notFoundMessage,
       },
     }),
 
-  clearPendingInitialPodcast: () =>
+  clearPendingInitialItem: () =>
     set({
       initialLoad: {
-        pendingPodcast: null,
+        pendingItem: null,
         pendingNotFoundMessage: null,
       },
     }),
@@ -157,13 +173,74 @@ export const useAppStore = create<AppStore>((set, get) => ({
       listView: { ...state.listView, activeTagFilters: [] },
     })),
 
+  setContentTypeFilters: (activeContentTypeFilters: ContentType[]) =>
+    set((state) => ({
+      listView: { ...state.listView, activeContentTypeFilters },
+    })),
+
+  toggleContentTypeFilter: (type: ContentType) =>
+    set((state) => {
+      const { activeContentTypeFilters } = state.listView;
+      const newFilters = activeContentTypeFilters.includes(type)
+        ? activeContentTypeFilters.filter((t) => t !== type)
+        : [...activeContentTypeFilters, type];
+      return {
+        listView: { ...state.listView, activeContentTypeFilters: newFilters },
+      };
+    }),
+
+  clearContentTypeFilters: () =>
+    set((state) => ({
+      listView: { ...state.listView, activeContentTypeFilters: [] },
+    })),
+
   saveListScrollPosition: (scrollPosition: number) =>
     set((state) => ({
       listView: { ...state.listView, scrollPosition },
     })),
 }));
 
+// ============================================
 // Selector hooks for common derived state
+// ============================================
+
+// Get all map items combined
+export const useAllMapItems = () => {
+  const { podcasts, places, events } = useAppStore();
+  return [...podcasts, ...places, ...events] as MapItem[];
+};
+
+// Filter items by tags
+const filterByTags = (items: MapItem[], tagFilters: string[]): MapItem[] => {
+  if (tagFilters.length === 0) return items;
+  return items.filter((item) =>
+    item.tags.some((tag) => tagFilters.includes(tag.id))
+  );
+};
+
+// Filter items by content type
+const filterByContentType = (items: MapItem[], typeFilters: ContentType[]): MapItem[] => {
+  if (typeFilters.length === 0) return items;
+  return items.filter((item) => typeFilters.includes(item.type));
+};
+
+// Get filtered map items (by both tags and content type)
+export const useFilteredMapItems = () => {
+  const { podcasts, places, events, listView } = useAppStore();
+  const { activeTagFilters, activeContentTypeFilters } = listView;
+
+  let items: MapItem[] = [...podcasts, ...places, ...events];
+
+  // Filter by content type first
+  items = filterByContentType(items, activeContentTypeFilters);
+
+  // Then filter by tags
+  items = filterByTags(items, activeTagFilters);
+
+  return items;
+};
+
+// Get filtered podcasts only (for backward compatibility)
 export const useFilteredPodcasts = () => {
   const { podcasts, listView } = useAppStore();
   const { activeTagFilters } = listView;
@@ -177,10 +254,55 @@ export const useFilteredPodcasts = () => {
   );
 };
 
-export const useSelectedPodcast = () => useAppStore((state) => state.card.selectedPodcast);
+// Get filtered places only
+export const useFilteredPlaces = () => {
+  const { places, listView } = useAppStore();
+  const { activeTagFilters } = listView;
+
+  if (activeTagFilters.length === 0) {
+    return places;
+  }
+
+  return places.filter((place) =>
+    place.tags.some((tag) => activeTagFilters.includes(tag.id))
+  );
+};
+
+// Get filtered events only
+export const useFilteredEvents = () => {
+  const { events, listView } = useAppStore();
+  const { activeTagFilters } = listView;
+
+  if (activeTagFilters.length === 0) {
+    return events;
+  }
+
+  return events.filter((event) =>
+    event.tags.some((tag) => activeTagFilters.includes(tag.id))
+  );
+};
+
+// Selected item (can be any content type)
+export const useSelectedItem = () => useAppStore((state) => state.card.selectedItem);
+
+// For backward compatibility - returns selected item if it's a podcast
+export const useSelectedPodcast = () => {
+  const selectedItem = useAppStore((state) => state.card.selectedItem);
+  return selectedItem?.type === 'podcast' ? selectedItem as Podcast : null;
+};
+
 export const useIsCardOpen = () => useAppStore((state) => state.card.isOpen);
 export const useIsListOpen = () => useAppStore((state) => state.listView.isOpen);
 export const useActiveTagFilters = () => useAppStore((state) => state.listView.activeTagFilters);
+export const useActiveContentTypeFilters = () => useAppStore((state) => state.listView.activeContentTypeFilters);
 export const useIsMapLocked = () => useAppStore((state) => state.map.isLocked);
-export const usePendingInitialPodcast = () => useAppStore((state) => state.initialLoad.pendingPodcast);
+
+// Pending initial item (for URL-based navigation)
+export const usePendingInitialItem = () => useAppStore((state) => state.initialLoad.pendingItem);
 export const usePendingNotFoundMessage = () => useAppStore((state) => state.initialLoad.pendingNotFoundMessage);
+
+// For backward compatibility
+export const usePendingInitialPodcast = () => {
+  const pendingItem = useAppStore((state) => state.initialLoad.pendingItem);
+  return pendingItem?.type === 'podcast' ? pendingItem as Podcast : pendingItem;
+};

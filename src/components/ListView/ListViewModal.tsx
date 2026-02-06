@@ -1,18 +1,19 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
-import { useAppStore, useIsListOpen, useFilteredPodcasts } from '@/store/useAppStore';
+import { useAppStore, useIsListOpen, useFilteredMapItems, useAllMapItems } from '@/store/useAppStore';
 import { ListHeader } from './ListHeader';
 import { TagFilter } from './TagFilter';
 import { ListItem } from './ListItem';
+import type { MapItem } from '@/types';
 
 export function ListViewModal() {
   const listRef = useRef<HTMLDivElement>(null);
   const isOpen = useIsListOpen();
-  const filteredPodcasts = useFilteredPodcasts();
+  const filteredItems = useFilteredMapItems();
+  const allItems = useAllMapItems();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const {
-    podcasts,
     tags,
     closeListView,
     openCard,
@@ -41,7 +42,7 @@ export function ListViewModal() {
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, closeListView]);
 
-  const handleItemClick = (podcast: (typeof filteredPodcasts)[0]) => {
+  const handleItemClick = (item: MapItem) => {
     // Save scroll position
     if (listRef.current) {
       saveListScrollPosition(listRef.current.scrollTop);
@@ -49,12 +50,12 @@ export function ListViewModal() {
 
     // Close list and open card
     closeListView();
-    openCard(podcast, true);
+    openCard(item, true);
 
     // Fly to location
     const mapRef = (window as any).__goodPlaceMap;
     if (mapRef?.flyTo) {
-      mapRef.flyTo(podcast.longitude, podcast.latitude, 14);
+      mapRef.flyTo(item.longitude, item.latitude, 14);
     }
   };
 
@@ -80,12 +81,12 @@ export function ListViewModal() {
             animate-in fade-in duration-200"
           role="dialog"
           aria-modal="true"
-          aria-label="Episode list"
+          aria-label="Content list"
         >
           <ListHeader
             onClose={closeListView}
-            totalCount={podcasts.length}
-            filteredCount={filteredPodcasts.length}
+            totalCount={allItems.length}
+            filteredCount={filteredItems.length}
             onFilterToggle={() => setIsFilterOpen(!isFilterOpen)}
             isFilterOpen={isFilterOpen}
           />
@@ -96,17 +97,17 @@ export function ListViewModal() {
             ref={listRef}
             className="flex-1 overflow-y-auto p-3"
           >
-            {filteredPodcasts.length === 0 ? (
+            {filteredItems.length === 0 ? (
               <div className="flex items-center justify-center h-32 text-gray-500">
-                No episodes match your filters
+                No items match your filters
               </div>
             ) : (
               <div className="space-y-0">
-                {filteredPodcasts.map((podcast) => (
+                {filteredItems.map((item) => (
                   <ListItem
-                    key={podcast.id}
-                    podcast={podcast}
-                    onClick={() => handleItemClick(podcast)}
+                    key={item.id}
+                    item={item}
+                    onClick={() => handleItemClick(item)}
                   />
                 ))}
               </div>
