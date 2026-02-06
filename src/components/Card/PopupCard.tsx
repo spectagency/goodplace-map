@@ -3,7 +3,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAppStore, useSelectedPodcast, useIsCardOpen } from '@/store/useAppStore';
 import { CloseButton, TagPill, Button, YouTubeIcon, Overlay } from '@/components/UI';
-import { CollapsibleDescription } from './CollapsibleDescription';
+import { ScrollableDescription } from './ScrollableDescription';
+
+// Card dimensions for pin positioning calculations
+export const CARD_MIN_HEIGHT_VH = 40;
+export const CARD_MAX_HEIGHT_PX = 560;
 
 function getYouTubeEmbedUrl(url: string): string | null {
   if (!url) return null;
@@ -138,120 +142,124 @@ export function PopupCard() {
             className="absolute -top-3 -right-3 z-10"
           />
           <div
-            className="w-[90vw] max-w-[450px] max-h-[80vh]
-              bg-white/80 backdrop-blur-[10px] rounded-[24px]
+            className="w-[90vw] max-w-[450px]
+              bg-white rounded-[24px]
               shadow-[0_0_10px_rgba(117,117,117,0.25)]
               overflow-hidden flex flex-col p-3
-              animate-in fade-in duration-200"
+              animate-in fade-in duration-300"
+            style={{
+              minHeight: `${CARD_MIN_HEIGHT_VH}vh`,
+              maxHeight: `${CARD_MAX_HEIGHT_PX}px`
+            }}
             role="dialog"
             aria-modal="true"
             aria-labelledby="card-title"
           >
-          {/* Thumbnail/Video section */}
-          {podcast.thumbnailUrl ? (
-            <div className="relative w-full aspect-video bg-gray-100 flex-shrink-0 rounded-[12px] overflow-hidden">
-              <img
-                src={podcast.thumbnailUrl}
-                alt={podcast.title}
-                className="w-full h-full object-cover"
-              />
+            {/* Thumbnail/Video section - fixed at top */}
+            {podcast.thumbnailUrl ? (
+              <div className="relative w-full aspect-video bg-gray-100 flex-shrink-0 rounded-[12px] overflow-hidden">
+                <img
+                  src={podcast.thumbnailUrl}
+                  alt={podcast.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ) : youtubeEmbedUrl ? (
+              <div className="relative w-full aspect-video bg-gray-100 flex-shrink-0 rounded-[12px] overflow-hidden">
+                <iframe
+                  src={youtubeEmbedUrl}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  title={podcast.title}
+                />
+              </div>
+            ) : null}
+
+            {/* Middle content section - fills available space */}
+            <div className="flex-1 min-h-0 flex flex-col px-2 pt-2">
+              {/* Location name */}
+              {podcast.locationName && (
+                <p className="text-xs text-gray-500 uppercase tracking-wide mb-0.5 flex-shrink-0">
+                  {podcast.locationName}
+                </p>
+              )}
+
+              {/* Title */}
+              <h2
+                id="card-title"
+                className="text-xl font-bold text-gray-900 mt-0 mb-2 flex-shrink-0"
+              >
+                {podcast.title}
+              </h2>
+
+              {/* Tags */}
+              {podcast.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-3 flex-shrink-0">
+                  {podcast.tags.map((tag) => (
+                    <TagPill key={tag.id} name={tag.name} />
+                  ))}
+                </div>
+              )}
+
+              {/* Description - scrollable with gradient fade, fills remaining space */}
+              {podcast.description && (
+                <ScrollableDescription description={podcast.description} />
+              )}
             </div>
-          ) : youtubeEmbedUrl ? (
-            <div className="relative w-full aspect-video bg-gray-100 flex-shrink-0 rounded-[12px] overflow-hidden">
-              <iframe
-                src={youtubeEmbedUrl}
-                className="w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                title={podcast.title}
-              />
-            </div>
-          ) : null}
 
-        {/* Content section */}
-        <div className="flex-1 overflow-y-auto px-2 pt-2 pb-3">
-          {/* Location name */}
-          {podcast.locationName && (
-            <p className="text-xs text-gray-500 uppercase tracking-wide mb-0.5">
-              {podcast.locationName}
-            </p>
-          )}
-
-          {/* Title */}
-          <h2
-            id="card-title"
-            className="text-xl font-bold text-gray-900 mb-2"
-          >
-            {podcast.title}
-          </h2>
-
-          {/* Tags */}
-          {podcast.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mb-4">
-              {podcast.tags.map((tag) => (
-                <TagPill key={tag.id} name={tag.name} />
-              ))}
-            </div>
-          )}
-
-          {/* Description */}
-          {podcast.description && (
-            <CollapsibleDescription description={podcast.description} />
-          )}
-
-          {/* Action buttons */}
-          <div className="space-y-2 mt-4">
-            <div className="flex gap-2">
-              {podcast.spotifyLink && (
-                <Button href={podcast.spotifyLink} variant="spotify" className="flex-1">
-                  Listen on Spotify
+            {/* Action buttons - fixed at bottom */}
+            <div className="flex-shrink-0 px-2 pt-3 pb-1 space-y-2">
+              <div className="flex gap-2">
+                {podcast.spotifyLink && (
+                  <Button href={podcast.spotifyLink} variant="spotify" className="flex-1">
+                    Listen on Spotify
+                  </Button>
+                )}
+                <Button
+                  variant="secondary"
+                  onClick={handleShare}
+                  className="px-4"
+                  aria-label="Share episode"
+                >
+                  {shareStatus === 'copied' ? (
+                    <span className="text-sm">Copied!</span>
+                  ) : (
+                    <ShareIcon />
+                  )}
+                </Button>
+              </div>
+              {podcast.youtubeLink && !youtubeEmbedUrl && (
+                <Button href={podcast.youtubeLink} variant="youtube" fullWidth>
+                  <YouTubeIcon />
+                  Watch on YouTube
                 </Button>
               )}
-              <Button
-                variant="secondary"
-                onClick={handleShare}
-                className="px-4"
-                aria-label="Share episode"
-              >
-                {shareStatus === 'copied' ? (
-                  <span className="text-sm">Copied!</span>
-                ) : (
-                  <ShareIcon />
-                )}
-              </Button>
-            </div>
-            {podcast.youtubeLink && !youtubeEmbedUrl && (
-              <Button href={podcast.youtubeLink} variant="youtube" fullWidth>
-                <YouTubeIcon />
-                Watch on YouTube
-              </Button>
-            )}
-          </div>
 
-          {/* Back to list button */}
-          {card.openedFromList && (
-            <button
-              onClick={handleBackToList}
-              className="mt-4 text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <line x1="19" y1="12" x2="5" y2="12" />
-                <polyline points="12 19 5 12 12 5" />
-              </svg>
-              Back to list
-            </button>
-          )}
+              {/* Back to list button */}
+              {card.openedFromList && (
+                <button
+                  onClick={handleBackToList}
+                  className="mt-2 text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <line x1="19" y1="12" x2="5" y2="12" />
+                    <polyline points="12 19 5 12 12 5" />
+                  </svg>
+                  Back to list
+                </button>
+              )}
+            </div>
           </div>
-        </div>
         </div>
       </div>
     </>

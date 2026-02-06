@@ -19,6 +19,7 @@ import {
 } from '@/store/useAppStore';
 import type { Podcast } from '@/types';
 import { ListViewToggle } from './MapControls';
+import { CARD_MAX_HEIGHT_PX } from '@/components/Card/PopupCard';
 
 const PRIMARY_GREEN = '#60977F';
 
@@ -137,15 +138,21 @@ export function MapContainer({ initialPodcasts = [] }: MapContainerProps) {
           clusterThresholds={[5, 20]}
           clusterSizes={[28, 36, 48]}
           pointColor={PRIMARY_GREEN}
-          pointRadius={10}
+          pointRadius={6}
           clusterRadius={30}
           clusterMaxZoom={12}
           clusterTextSize={14}
           clusterTextWeight="bold"
           layerIds={CLUSTER_LAYER_IDS}
-          onPointClick={handlePointClick}
           onClusterClick={handleClusterClick}
         />
+        <PodcastPins podcasts={filteredPodcasts} onPinClick={(podcast) => {
+          // Dispatch event to pan first, then open card
+          window.dispatchEvent(
+            new CustomEvent('pin-click', { detail: { podcast } })
+          );
+        }} />
+        <HideNativeUnclusteredPoints />
         <AdaptiveClusterZoom />
         <MapControls position="bottom-right" showZoom />
         <FitBoundsOnLoad podcasts={filteredPodcasts} />
@@ -182,6 +189,41 @@ function CleanupMapStyle() {
   return null;
 }
 
+// Component to make native unclustered points transparent (but still queryable)
+function HideNativeUnclusteredPoints() {
+  const { map, isLoaded } = useMap();
+  const hasHiddenRef = useRef(false);
+
+  useEffect(() => {
+    if (!map || !isLoaded) return;
+
+    const hidePoints = () => {
+      if (hasHiddenRef.current) return;
+
+      const layer = map.getLayer(CLUSTER_LAYER_IDS.unclusteredPoint);
+      if (layer) {
+        // Set opacity to near-zero - testing if 0 prevents querying
+        map.setPaintProperty(CLUSTER_LAYER_IDS.unclusteredPoint, 'circle-opacity', 0.01);
+        hasHiddenRef.current = true;
+      }
+    };
+
+    // Try immediately
+    hidePoints();
+
+    // Also try on sourcedata/idle in case layer wasn't ready
+    map.on('sourcedata', hidePoints);
+    map.on('idle', hidePoints);
+
+    return () => {
+      map.off('sourcedata', hidePoints);
+      map.off('idle', hidePoints);
+    };
+  }, [map, isLoaded]);
+
+  return null;
+}
+
 // Component to fit bounds when podcasts load
 function FitBoundsOnLoad({ podcasts }: { podcasts: Podcast[] }) {
   const { map, isLoaded } = useMap();
@@ -204,7 +246,7 @@ function FitBoundsOnLoad({ podcasts }: { podcasts: Podcast[] }) {
 
     map.fitBounds(bounds, {
       padding: 50,
-      maxZoom: 12,
+      maxZoom: 11,
       duration: 1000,
     });
 
@@ -247,36 +289,205 @@ function InitialPodcastPanHandler() {
     if (!map || !isLoaded || !pendingPodcast || hasHandledRef.current) return;
     hasHandledRef.current = true;
 
-    // Get container height to calculate offset
-    const container = map.getContainer();
-    const containerHeight = container.clientHeight;
+    // Calculate offset to position pin just below the centered card
+    // Card typically fills to max-height with content (video + text + buttons)
+    const pinMargin = 15; // pixels below card
+    const offsetY = CARD_MAX_HEIGHT_PX / 2 + pinMargin;
 
-    // We want the pin to appear below the card with some margin
-    const offsetY = containerHeight * 0.35;
+    // Use flyTo for a smooth curved path that zooms and pans together
+    const targetZoom = 18;
 
-    // Pan to the podcast location first (max zoom for detail)
-    map.easeTo({
+    map.flyTo({
       center: [pendingPodcast.longitude, pendingPodcast.latitude],
       offset: [0, offsetY],
-      zoom: 18,
-      duration: 800,
+      zoom: targetZoom,
+      speed: 2.7, // Fast animation
+      curve: 1.2, // Less dramatic curve for quicker feel
+      easing: (t) => 1 - Math.pow(1 - t, 3), // Ease-out cubic: fast start, smooth arrival
     });
 
-    // After pan completes, open the card
+    let hasOpenedCard = false;
+
+    // Open card when we're close to target zoom (overlaps with end of animation)
+    const handleZoom = () => {
+      if (hasOpenedCard) return;
+      const currentZoom = map.getZoom();
+      // Open card when within 0.5 zoom levels of target
+      if (currentZoom >= targetZoom - 0.5) {
+        hasOpenedCard = true;
+        openCard(pendingPodcast, false, pendingNotFoundMessage);
+        clearPendingInitialPodcast();
+        map.off('zoom', handleZoom);
+        map.off('moveend', handleMoveEnd);
+      }
+    };
+
+    // Fallback: ensure card opens even if zoom threshold not reached
     const handleMoveEnd = () => {
-      openCard(pendingPodcast, false, pendingNotFoundMessage);
-      clearPendingInitialPodcast();
+      if (!hasOpenedCard) {
+        hasOpenedCard = true;
+        openCard(pendingPodcast, false, pendingNotFoundMessage);
+        clearPendingInitialPodcast();
+      }
+      map.off('zoom', handleZoom);
       map.off('moveend', handleMoveEnd);
     };
 
+    map.on('zoom', handleZoom);
     map.once('moveend', handleMoveEnd);
 
     return () => {
+      map.off('zoom', handleZoom);
       map.off('moveend', handleMoveEnd);
     };
   }, [map, isLoaded, pendingPodcast, pendingNotFoundMessage, openCard, clearPendingInitialPodcast]);
 
   return null;
+}
+
+// Component to render custom styled pins only for unclustered points
+function PodcastPins({
+  podcasts,
+  onPinClick,
+}: {
+  podcasts: Podcast[];
+  onPinClick: (podcast: Podcast) => void;
+}) {
+  const { map, isLoaded } = useMap();
+  const [unclusteredIds, setUnclusteredIds] = useState<Set<string>>(new Set());
+  const selectedPodcast = useSelectedPodcast();
+  const isCardOpen = useIsCardOpen();
+
+  useEffect(() => {
+    if (!map || !isLoaded) return;
+
+    const updateUnclusteredPins = () => {
+      // Check if the unclustered-point layer exists
+      const layer = map.getLayer(CLUSTER_LAYER_IDS.unclusteredPoint);
+      if (!layer) return;
+
+      // Query rendered features on the unclustered-point layer
+      const renderedFeatures = map.queryRenderedFeatures(undefined, {
+        layers: [CLUSTER_LAYER_IDS.unclusteredPoint],
+      });
+
+      // Extract podcast IDs from rendered features
+      const ids = new Set<string>();
+      for (const feature of renderedFeatures) {
+        const id = feature.properties?.id;
+        if (id) {
+          ids.add(id);
+        }
+      }
+
+      // WORKAROUND: At certain zoom levels with globe projection, MapLibre GL
+      // doesn't render features even though they exist in the source.
+      // Fall back to querying source features directly.
+      if (ids.size === 0) {
+        const style = map.getStyle();
+        const clusterSourceId = style?.sources
+          ? Object.keys(style.sources).find(id => id.startsWith('cluster-source-'))
+          : null;
+
+        if (clusterSourceId) {
+          const sourceFeatures = map.querySourceFeatures(clusterSourceId, {
+            sourceLayer: undefined,
+          });
+
+          for (const feature of sourceFeatures) {
+            // Only include unclustered points (not clusters)
+            if (!feature.properties?.cluster) {
+              const id = feature.properties?.id;
+              if (id) {
+                ids.add(id);
+              }
+            }
+          }
+        }
+      }
+
+      setUnclusteredIds(ids);
+    };
+
+    // Update on map movements and zoom changes
+    map.on('moveend', updateUnclusteredPins);
+    map.on('zoomend', updateUnclusteredPins);
+    map.on('sourcedata', updateUnclusteredPins);
+    map.on('idle', updateUnclusteredPins);
+
+    // Initial update after a short delay to ensure layers are ready
+    const timeoutId = setTimeout(updateUnclusteredPins, 300);
+
+    return () => {
+      map.off('moveend', updateUnclusteredPins);
+      map.off('zoomend', updateUnclusteredPins);
+      map.off('sourcedata', updateUnclusteredPins);
+      map.off('idle', updateUnclusteredPins);
+      clearTimeout(timeoutId);
+    };
+  }, [map, isLoaded]);
+
+  // Only render pins for unclustered points
+  const unclusteredPodcasts = podcasts.filter(p => unclusteredIds.has(p.id));
+
+  return (
+    <>
+      {unclusteredPodcasts.map((podcast) => {
+        // Don't render pin for selected podcast (SelectedPinIndicator handles it)
+        if (isCardOpen && selectedPodcast?.id === podcast.id) return null;
+
+        return (
+          <PodcastPin
+            key={podcast.id}
+            podcast={podcast}
+            onClick={() => onPinClick(podcast)}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+// Individual podcast pin with hover effect
+function PodcastPin({
+  podcast,
+  onClick,
+}: {
+  podcast: Podcast;
+  onClick: () => void;
+}) {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <MapMarker longitude={podcast.longitude} latitude={podcast.latitude}>
+      <MarkerContent>
+        <div
+          className="relative cursor-pointer"
+          onClick={onClick}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {/* Outer pulse ring - only on hover */}
+          {isHovered && (
+            <div
+              className="absolute -inset-3 rounded-full animate-ping opacity-30"
+              style={{ backgroundColor: PRIMARY_GREEN }}
+            />
+          )}
+          {/* Outer ring - always visible */}
+          <div
+            className="absolute -inset-2 rounded-full"
+            style={{ backgroundColor: PRIMARY_GREEN, opacity: 0.3 }}
+          />
+          {/* Main pin */}
+          <div
+            className="relative w-5 h-5 rounded-full border-3 border-white shadow-lg"
+            style={{ backgroundColor: PRIMARY_GREEN }}
+          />
+        </div>
+      </MarkerContent>
+    </MapMarker>
+  );
 }
 
 // Component to show a highlighted marker for the selected pin
@@ -314,43 +525,68 @@ function SelectedPinIndicator() {
   );
 }
 
-// Component to pan the map so the selected pin appears below the card
+// Component to handle pin clicks: pan first, then open card
 function PanToSelectedPin() {
   const { map, isLoaded } = useMap();
-  const selectedPodcast = useSelectedPodcast();
-  const isCardOpen = useIsCardOpen();
-  const prevSelectedIdRef = useRef<string | null>(null);
+  const { openCard } = useAppStore();
 
   useEffect(() => {
-    if (!map || !isLoaded || !isCardOpen || !selectedPodcast) return;
+    if (!map || !isLoaded) return;
 
-    // Only pan if this is a new selection
-    if (prevSelectedIdRef.current === selectedPodcast.id) return;
-    prevSelectedIdRef.current = selectedPodcast.id;
+    const handlePinClick = (e: Event) => {
+      const { podcast } = (e as CustomEvent).detail;
 
-    // Get container height to calculate offset
-    const container = map.getContainer();
-    const containerHeight = container.clientHeight;
+      // Calculate offset to position pin just below the centered card
+      // Card typically fills to max-height with content (video + text + buttons)
+      const pinMargin = 15; // pixels below card
+      const offsetY = CARD_MAX_HEIGHT_PX / 2 + pinMargin;
+      const targetZoom = 18;
 
-    // We want the pin to appear below the card with some margin
-    // Card is centered at 50%, offset by 35% to give more breathing room
-    // Positive Y offset shifts the pin down from center
-    const offsetY = containerHeight * 0.35;
+      // Pan to the podcast location first
+      map.flyTo({
+        center: [podcast.longitude, podcast.latitude],
+        offset: [0, offsetY],
+        zoom: targetZoom,
+        speed: 2.7, // Fast animation
+        curve: 1.2, // Less dramatic curve for quicker feel
+        easing: (t) => 1 - Math.pow(1 - t, 3), // Ease-out cubic: fast start, smooth arrival
+      });
 
-    map.easeTo({
-      center: [selectedPodcast.longitude, selectedPodcast.latitude],
-      offset: [0, offsetY], // Positive Y shifts pin below center
-      zoom: 18, // Max zoom for detail when viewing a card
-      duration: 500,
-    });
-  }, [map, isLoaded, isCardOpen, selectedPodcast]);
+      let hasOpenedCard = false;
 
-  // Reset when card closes
-  useEffect(() => {
-    if (!isCardOpen) {
-      prevSelectedIdRef.current = null;
-    }
-  }, [isCardOpen]);
+      // Open card when we're close to target zoom (overlaps with end of animation)
+      const handleZoom = () => {
+        if (hasOpenedCard) return;
+        const currentZoom = map.getZoom();
+        // Open card when within 0.5 zoom levels of target
+        if (currentZoom >= targetZoom - 0.5) {
+          hasOpenedCard = true;
+          openCard(podcast);
+          map.off('zoom', handleZoom);
+          map.off('moveend', handleMoveEnd);
+        }
+      };
+
+      // Fallback: ensure card opens even if zoom threshold not reached
+      const handleMoveEnd = () => {
+        if (!hasOpenedCard) {
+          hasOpenedCard = true;
+          openCard(podcast);
+        }
+        map.off('zoom', handleZoom);
+        map.off('moveend', handleMoveEnd);
+      };
+
+      map.on('zoom', handleZoom);
+      map.once('moveend', handleMoveEnd);
+    };
+
+    window.addEventListener('pin-click', handlePinClick);
+
+    return () => {
+      window.removeEventListener('pin-click', handlePinClick);
+    };
+  }, [map, isLoaded, openCard]);
 
   return null;
 }
