@@ -21,7 +21,7 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
     <main className="relative w-full h-screen overflow-hidden">
       <StoreInitializer
         tags={tags}
-        initialSelectedPodcast={selectedPodcast}
+        initialSelectedItem={selectedPodcast}
         showNotFoundMessage={showNotFoundMessage}
       />
       <MapContainer initialPodcasts={allPodcasts} />
