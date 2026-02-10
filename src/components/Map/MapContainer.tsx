@@ -45,6 +45,15 @@ const cartoStyles = {
   dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
 };
 
+// Responsive zoom levels per breakpoint
+function getBreakpointZoom() {
+  if (typeof window === 'undefined') return { initialZoom: 2.8, minZoom: 2.8 };
+  const w = window.innerWidth;
+  if (w < 768) return { initialZoom: 2.2, minZoom: 2.2 };
+  if (w <= 1024) return { initialZoom: 2.6, minZoom: 2.6 };
+  return { initialZoom: 2.8, minZoom: 2.8 };
+}
+
 // Layers to hide for a cleaner look
 const layersToHide = [
   'place_state',           // Province/state names
@@ -64,7 +73,20 @@ export function MapContainer({
   const { setPodcasts, setPlaces, setEvents, openCard } = useAppStore();
   const filteredItems = useFilteredMapItems();
   const isCardOpen = useIsCardOpen();
+  const [{ initialZoom, minZoom }] = useState(getBreakpointZoom);
   const hasInitializedDataRef = useRef(false);
+
+  // Listen for postMessage from parent website to close cards
+  useEffect(() => {
+    function handleMessage(event: MessageEvent) {
+      if (event.data === 'closeCards') {
+        useAppStore.getState().closeCard();
+        useAppStore.getState().closeListView();
+      }
+    }
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   // Initialize data from server (only once)
   useEffect(() => {
@@ -132,8 +154,8 @@ export function MapContainer({
     <div className="relative w-full h-screen">
       <Map
         center={[5.1214, 52.0907]}
-        zoom={7}
-        minZoom={1.5}
+        zoom={initialZoom}
+        minZoom={minZoom}
         maxZoom={18}
         styles={cartoStyles}
         theme="light"
