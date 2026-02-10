@@ -6,7 +6,7 @@ export function ListViewToggle() {
   const { toggleListView, listView } = useAppStore();
 
   return (
-    <div className="absolute top-4 left-4 z-10">
+    <div className="absolute bottom-4 left-4 z-10">
       <button
         onClick={toggleListView}
         className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow font-medium text-sm"
