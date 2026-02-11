@@ -43,6 +43,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   // Initial state - List View
   listView: {
     isOpen: false,
+    isFilterOpen: false,
     scrollPosition: 0,
     activeTagFilters: [],
     activeContentTypeFilters: [],
@@ -131,15 +132,15 @@ export const useAppStore = create<AppStore>((set, get) => ({
     }),
 
   // List view actions
-  openListView: () =>
+  openListView: (withFilters = false) =>
     set((state) => ({
-      listView: { ...state.listView, isOpen: true },
+      listView: { ...state.listView, isOpen: true, isFilterOpen: withFilters },
       map: { ...state.map, isLocked: true },
     })),
 
   closeListView: () =>
     set((state) => ({
-      listView: { ...state.listView, isOpen: false },
+      listView: { ...state.listView, isOpen: false, isFilterOpen: false },
       map: { ...state.map, isLocked: false },
     })),
 

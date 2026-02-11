@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect } from 'react';
 import { useAppStore, useIsListOpen, useFilteredMapItems, useAllMapItems } from '@/store/useAppStore';
 import { ListHeader } from './ListHeader';
 import { TagFilter } from './TagFilter';
@@ -12,7 +12,6 @@ export function ListViewModal() {
   const isOpen = useIsListOpen();
   const filteredItems = useFilteredMapItems();
   const allItems = useAllMapItems();
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const {
     tags,
     closeListView,
@@ -20,6 +19,11 @@ export function ListViewModal() {
     saveListScrollPosition,
     listView,
   } = useAppStore();
+  const isFilterOpen = listView.isFilterOpen;
+  const setIsFilterOpen = (open: boolean) =>
+    useAppStore.setState((state) => ({
+      listView: { ...state.listView, isFilterOpen: open },
+    }));
 
   // Restore scroll position when reopening
   useEffect(() => {

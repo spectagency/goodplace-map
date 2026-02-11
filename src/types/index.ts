@@ -122,6 +122,7 @@ export interface InitialLoadState {
 // List view types
 export interface ListViewState {
   isOpen: boolean;
+  isFilterOpen: boolean;
   scrollPosition: number;
   activeTagFilters: string[];
   activeContentTypeFilters: ContentType[]; // Filter by content type
@@ -176,7 +177,7 @@ export interface AppActions {
   clearPendingInitialItem: () => void;
 
   // List view actions
-  openListView: () => void;
+  openListView: (withFilters?: boolean) => void;
   closeListView: () => void;
   toggleListView: () => void;
   setTagFilters: (filters: string[]) => void;
