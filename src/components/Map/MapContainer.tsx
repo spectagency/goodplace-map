@@ -238,7 +238,7 @@ function HideNativeClusterLayers() {
       // Hide unclustered points
       const pointLayer = map.getLayer(CLUSTER_LAYER_IDS.unclusteredPoint);
       if (pointLayer) {
-        map.setPaintProperty(CLUSTER_LAYER_IDS.unclusteredPoint, 'circle-opacity', 0.01);
+        map.setPaintProperty(CLUSTER_LAYER_IDS.unclusteredPoint, 'circle-opacity', 0);
       }
 
       // Hide native cluster circles (we'll render custom ones)
@@ -603,46 +603,27 @@ function MapItemPins({
     if (!map || !isLoaded) return;
 
     const updateUnclusteredPins = () => {
-      // Check if the unclustered-point layer exists
-      const layer = map.getLayer(CLUSTER_LAYER_IDS.unclusteredPoint);
-      if (!layer) return;
+      // Query the cluster source directly to find unclustered points.
+      // This is more reliable than queryRenderedFeatures, which fails
+      // at certain zoom levels with globe projection when the native
+      // circle layer is hidden.
+      const style = map.getStyle();
+      const clusterSourceId = style?.sources
+        ? Object.keys(style.sources).find(id => id.startsWith('cluster-source-'))
+        : null;
 
-      // Query rendered features on the unclustered-point layer
-      const renderedFeatures = map.queryRenderedFeatures(undefined, {
-        layers: [CLUSTER_LAYER_IDS.unclusteredPoint],
+      if (!clusterSourceId) return;
+
+      const sourceFeatures = map.querySourceFeatures(clusterSourceId, {
+        sourceLayer: undefined,
       });
 
-      // Extract item IDs from rendered features
       const ids = new Set<string>();
-      for (const feature of renderedFeatures) {
-        const id = feature.properties?.id;
-        if (id) {
-          ids.add(id);
-        }
-      }
-
-      // WORKAROUND: At certain zoom levels with globe projection, MapLibre GL
-      // doesn't render features even though they exist in the source.
-      // Fall back to querying source features directly.
-      if (ids.size === 0) {
-        const style = map.getStyle();
-        const clusterSourceId = style?.sources
-          ? Object.keys(style.sources).find(id => id.startsWith('cluster-source-'))
-          : null;
-
-        if (clusterSourceId) {
-          const sourceFeatures = map.querySourceFeatures(clusterSourceId, {
-            sourceLayer: undefined,
-          });
-
-          for (const feature of sourceFeatures) {
-            // Only include unclustered points (not clusters)
-            if (!feature.properties?.cluster) {
-              const id = feature.properties?.id;
-              if (id) {
-                ids.add(id);
-              }
-            }
+      for (const feature of sourceFeatures) {
+        if (!feature.properties?.cluster) {
+          const id = feature.properties?.id;
+          if (id) {
+            ids.add(id);
           }
         }
       }
