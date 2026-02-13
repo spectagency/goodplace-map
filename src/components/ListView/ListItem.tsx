@@ -20,14 +20,13 @@ export function ListItem({ item, onClick }: ListItemProps) {
   return (
     <button
       onClick={onClick}
-      className="w-full grid grid-cols-[auto_1fr] gap-3 px-3 py-2 hover:bg-black/5 rounded-lg transition-colors text-left"
-      style={{ gridTemplateRows: '1fr' }}
+      className="w-full grid grid-cols-[25%_1fr] gap-3 px-3 py-2 hover:bg-black/5 rounded-lg transition-colors text-left"
     >
-      {/* Thumbnail - square, height matches row */}
+      {/* Thumbnail - quarter width, square */}
       <div className="relative">
         <div
-          className="rounded-lg overflow-hidden bg-gray-100"
-          style={{ aspectRatio: '1/1', height: '100%' }}
+          className="rounded-lg overflow-hidden bg-gray-100 w-full"
+          style={{ aspectRatio: '1/1' }}
         >
           {item.thumbnailUrl ? (
             <img

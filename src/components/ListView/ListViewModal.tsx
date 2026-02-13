@@ -52,15 +52,11 @@ export function ListViewModal() {
       saveListScrollPosition(listRef.current.scrollTop);
     }
 
-    // Close list and open card
+    // Close list and fly to location, then open card
     closeListView();
-    openCard(item, true);
-
-    // Fly to location
-    const mapRef = (window as any).__goodPlaceMap;
-    if (mapRef?.flyTo) {
-      mapRef.flyTo(item.longitude, item.latitude, 14);
-    }
+    window.dispatchEvent(
+      new CustomEvent('pin-click', { detail: { item, fromList: true } })
+    );
   };
 
   if (!isOpen) return null;

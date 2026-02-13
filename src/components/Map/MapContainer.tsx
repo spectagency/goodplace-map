@@ -143,7 +143,7 @@ export function MapContainer({
       // which has access to the map instance
       window.dispatchEvent(
         new CustomEvent('cluster-click', {
-          detail: { coordinates, zoomIncrement },
+          detail: { clusterId, coordinates, zoomIncrement, pointCount },
         })
       );
     },
@@ -754,7 +754,7 @@ function PanToSelectedPin() {
     if (!map || !isLoaded) return;
 
     const handlePinClick = (e: Event) => {
-      const { item } = (e as CustomEvent).detail;
+      const { item, fromList } = (e as CustomEvent).detail;
       if (!item || !isFinite(item.longitude) || !isFinite(item.latitude)) return;
 
       const targetZoom = 18;
@@ -777,7 +777,7 @@ function PanToSelectedPin() {
         // Open card when within 0.5 zoom levels of target
         if (currentZoom >= targetZoom - 0.5) {
           hasOpenedCard = true;
-          openCard(item);
+          openCard(item, !!fromList);
           map.off('zoom', handleZoom);
           map.off('moveend', handleMoveEnd);
         }
@@ -787,7 +787,7 @@ function PanToSelectedPin() {
       const handleMoveEnd = () => {
         if (!hasOpenedCard) {
           hasOpenedCard = true;
-          openCard(item);
+          openCard(item, !!fromList);
         }
         map.off('zoom', handleZoom);
         map.off('moveend', handleMoveEnd);
@@ -814,9 +814,48 @@ function AdaptiveClusterZoom() {
   useEffect(() => {
     if (!map || !isLoaded) return;
 
-    const handleClusterClick = (e: Event) => {
-      const { coordinates, zoomIncrement } = (e as CustomEvent).detail;
+    const handleClusterClick = async (e: Event) => {
+      const { clusterId, coordinates, zoomIncrement, pointCount } = (e as CustomEvent).detail;
       const currentZoom = map.getZoom();
+
+      // Small clusters (< 5 items) at zoom 7 or lower: fit bounds to show all pins
+      if (pointCount < 5 && currentZoom <= 7 && clusterId != null) {
+        const style = map.getStyle();
+        const clusterSourceId = style?.sources
+          ? Object.keys(style.sources).find(id => id.startsWith('cluster-source-'))
+          : null;
+
+        if (clusterSourceId) {
+          try {
+            const source = map.getSource(clusterSourceId) as maplibregl.GeoJSONSource;
+            const leaves = await source.getClusterLeaves(clusterId, pointCount, 0);
+
+            if (leaves.length > 0) {
+              // Calculate bounding box of all points in the cluster
+              let minLng = Infinity, maxLng = -Infinity;
+              let minLat = Infinity, maxLat = -Infinity;
+
+              for (const leaf of leaves) {
+                const [lng, lat] = (leaf.geometry as GeoJSON.Point).coordinates;
+                if (lng < minLng) minLng = lng;
+                if (lng > maxLng) maxLng = lng;
+                if (lat < minLat) minLat = lat;
+                if (lat > maxLat) maxLat = lat;
+              }
+
+              map.fitBounds(
+                [[minLng, minLat], [maxLng, maxLat]],
+                { padding: 80, maxZoom: 18, duration: 500 }
+              );
+              return;
+            }
+          } catch {
+            // Fall through to default incremental zoom
+          }
+        }
+      }
+
+      // Default: incremental zoom
       const targetZoom = Math.min(currentZoom + zoomIncrement, 18);
 
       map.easeTo({

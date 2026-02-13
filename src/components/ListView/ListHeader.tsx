@@ -31,7 +31,7 @@ export function ListHeader({ onClose, totalCount, filteredCount, onFilterToggle,
           <line x1="3" y1="12" x2="3.01" y2="12" />
           <line x1="3" y1="18" x2="3.01" y2="18" />
         </svg>
-        <h2 className="text-lg font-bold uppercase tracking-wide text-gray-800">
+        <h2 className="m-0 text-lg font-bold uppercase tracking-wide text-gray-800">
           List View
         </h2>
       </div>
