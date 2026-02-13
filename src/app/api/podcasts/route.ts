@@ -78,6 +78,7 @@ async function fetchFromDatabase(
 
       return {
         ...podcast,
+        type: 'podcast' as const,
         tags: podcastTagList,
       };
     })

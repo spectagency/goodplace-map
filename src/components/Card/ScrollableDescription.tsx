@@ -52,7 +52,7 @@ export function ScrollableDescription({ description }: ScrollableDescriptionProp
   };
 
   return (
-    <div className="relative flex-1 min-h-0 overflow-hidden">
+    <div className="relative flex-1 min-h-[80px] overflow-hidden">
       <div
         ref={containerRef}
         onScroll={handleScroll}

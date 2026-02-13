@@ -122,7 +122,7 @@ export async function getTagsFromWebflow(env: WebflowEnv): Promise<Tag[]> {
       .sort((a, b) => a.name.localeCompare(b.name));
   } catch (error) {
     console.error('Error fetching tags from Webflow:', error);
-    throw error; // Re-throw to let caller handle
+    return [];
   }
 }
 

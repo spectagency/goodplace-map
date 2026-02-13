@@ -3,13 +3,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAppStore, useSelectedItem, useIsCardOpen } from '@/store/useAppStore';
 import { CloseButton, TagPill, Button, YouTubeIcon, Overlay } from '@/components/UI';
-import { ScrollableDescription } from './ScrollableDescription';
 import { isPodcast, isPlace, isEvent, CONTENT_TYPE_CONFIG } from '@/types';
 import type { MapItem, Podcast, Place, Event } from '@/types';
 
 // Card dimensions for pin positioning calculations
-export const CARD_MIN_HEIGHT_VH = 45;
-export const CARD_MAX_HEIGHT_PX = 640;
+export const CARD_MAX_HEIGHT_VH = 80;
 
 function getYouTubeEmbedUrl(url: string | null | undefined): string | null {
   if (!url || typeof url !== 'string') return null;
@@ -253,14 +251,11 @@ export function PopupCard() {
           />
           <div
             className="w-[90vw] max-w-[450px]
+              max-h-[calc(100vh-64px)] sm:max-h-[80vh]
               bg-white rounded-[24px]
               shadow-[0_0_10px_rgba(117,117,117,0.25)]
               overflow-hidden flex flex-col p-3
               animate-in fade-in duration-300"
-            style={{
-              minHeight: `${CARD_MIN_HEIGHT_VH}vh`,
-              maxHeight: `${CARD_MAX_HEIGHT_PX}px`
-            }}
             role="dialog"
             aria-modal="true"
             aria-labelledby="card-title"
@@ -286,10 +281,10 @@ export function PopupCard() {
               </div>
             ) : null}
 
-            {/* Middle content section - fills available space */}
-            <div className="flex-1 min-h-0 flex flex-col px-2 pt-2">
+            {/* Middle content section - scrollable when it overflows */}
+            <div className="flex-1 min-h-0 overflow-y-auto px-2 pt-2">
               {/* Content type badge + Location name */}
-              <div className="flex items-center gap-2 mb-0.5 flex-shrink-0">
+              <div className="flex items-center gap-2 mb-0.5">
                 <span
                   className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded"
                   style={{
@@ -309,14 +304,14 @@ export function PopupCard() {
               {/* Title */}
               <h2
                 id="card-title"
-                className="text-base sm:text-xl font-bold text-gray-900 mt-0 mb-2 flex-shrink-0"
+                className="text-base sm:text-xl font-bold text-gray-900 mt-0 mb-2"
               >
                 {item.title}
               </h2>
 
               {/* Event date (for events) */}
               {isEvent(item) && item.eventDate && (
-                <p className="text-sm text-gray-600 mb-2 flex items-center gap-1.5 flex-shrink-0">
+                <p className="text-sm text-gray-600 mb-2 flex items-center gap-1.5">
                   <CalendarIcon />
                   {formatEventDate(item.eventDate)}
                 </p>
@@ -324,23 +319,25 @@ export function PopupCard() {
 
               {/* Address (for places) */}
               {isPlace(item) && item.address && (
-                <p className="text-sm text-gray-600 mb-2 flex-shrink-0">
+                <p className="text-sm text-gray-600 mb-2">
                   📍 {item.address}
                 </p>
               )}
 
               {/* Tags */}
               {item.tags.length > 0 && (
-                <div className="flex gap-1.5 mb-3 flex-shrink-0 overflow-x-auto scrollbar-hide">
+                <div className="flex gap-1.5 mb-3 overflow-x-auto scrollbar-hide">
                   {item.tags.map((tag) => (
                     <TagPill key={tag.id} name={tag.name} />
                   ))}
                 </div>
               )}
 
-              {/* Description - scrollable with gradient fade, fills remaining space */}
+              {/* Description - full text, scrolls with the content above */}
               {item.description && (
-                <ScrollableDescription description={item.description} />
+                <p className="text-sm text-gray-600 leading-relaxed mb-2">
+                  {item.description}
+                </p>
               )}
             </div>
 

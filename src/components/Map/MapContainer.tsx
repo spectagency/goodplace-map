@@ -21,7 +21,7 @@ import {
 import type { MapItem, Podcast, Place, Event as GoodEvent } from '@/types';
 import { CONTENT_TYPE_CONFIG } from '@/types';
 import { ListViewToggle } from './MapControls';
-import { CARD_MAX_HEIGHT_PX } from '@/components/Card/PopupCard';
+import { CARD_MAX_HEIGHT_VH } from '@/components/Card/PopupCard';
 
 const PRIMARY_GREEN = '#60977F';
 
@@ -533,7 +533,8 @@ function InitialItemPanHandler() {
     // Calculate offset to position pin just below the centered card
     // Card typically fills to max-height with content (video + text + buttons)
     const pinMargin = 15; // pixels below card
-    const offsetY = CARD_MAX_HEIGHT_PX / 2 + pinMargin;
+    const cardMaxHeight = Math.round(window.innerHeight * CARD_MAX_HEIGHT_VH / 100);
+    const offsetY = cardMaxHeight / 2 + pinMargin;
 
     // Use flyTo for a smooth curved path that zooms and pans together
     const targetZoom = 18;
@@ -760,11 +761,13 @@ function PanToSelectedPin() {
 
     const handlePinClick = (e: Event) => {
       const { item } = (e as CustomEvent).detail;
+      if (!item || !isFinite(item.longitude) || !isFinite(item.latitude)) return;
 
       // Calculate offset to position pin just below the centered card
       // Card typically fills to max-height with content (video + text + buttons)
       const pinMargin = 15; // pixels below card
-      const offsetY = CARD_MAX_HEIGHT_PX / 2 + pinMargin;
+      const cardMaxHeight = Math.round(window.innerHeight * CARD_MAX_HEIGHT_VH / 100);
+      const offsetY = cardMaxHeight / 2 + pinMargin;
       const targetZoom = 18;
 
       // Pan to the item location first
