@@ -355,16 +355,27 @@ function CustomClusterMarkers({
       setClusters(uniqueClusters);
     };
 
-    // Update on map movements
+    // Delayed update to catch source re-clustering after zoom animations
+    let delayTimer: ReturnType<typeof setTimeout>;
+    const debouncedUpdate = () => {
+      updateClusters();
+      clearTimeout(delayTimer);
+      delayTimer = setTimeout(updateClusters, 200);
+    };
+
+    // Update on map movements and idle (idle fires after all rendering is complete)
     updateClusters();
-    map.on('moveend', updateClusters);
-    map.on('zoomend', updateClusters);
+    map.on('moveend', debouncedUpdate);
+    map.on('zoomend', debouncedUpdate);
     map.on('sourcedata', updateClusters);
+    map.on('idle', updateClusters);
 
     return () => {
-      map.off('moveend', updateClusters);
-      map.off('zoomend', updateClusters);
+      clearTimeout(delayTimer);
+      map.off('moveend', debouncedUpdate);
+      map.off('zoomend', debouncedUpdate);
       map.off('sourcedata', updateClusters);
+      map.off('idle', updateClusters);
     };
   }, [map, isLoaded, isCardOpen, items]);
 
@@ -402,60 +413,22 @@ function SplitColorCluster({
   if (pointCount >= 20) size = 56;
   else if (pointCount >= 5) size = 44;
 
-  // Count how many content types are present
-  const activeTypes = Object.entries(contentTypes)
+  // Use the color of the most common content type
+  const dominantType = (Object.entries(contentTypes) as [keyof typeof CONTENT_TYPE_CONFIG, number][])
     .filter(([_, count]) => count > 0)
-    .map(([type]) => type as keyof typeof CONTENT_TYPE_CONFIG);
-
-  // If only one type, show solid color
-  if (activeTypes.length === 1) {
-    const color = CONTENT_TYPE_CONFIG[activeTypes[0]].pinColor;
-    return (
-      <MapMarker longitude={coordinates[0]} latitude={coordinates[1]}>
-        <MarkerContent>
-          <div
-            className="flex items-center justify-center rounded-full cursor-pointer shadow-lg font-bold text-white"
-            style={{
-              width: size,
-              height: size,
-              backgroundColor: color,
-              fontSize: size > 44 ? 16 : 14,
-            }}
-            onClick={onClick}
-          >
-            {pointCount}
-          </div>
-        </MarkerContent>
-      </MapMarker>
-    );
-  }
-
-  // Multiple types - create equal split (50/50 for 2 types, 33/33/33 for 3 types)
-  const gradientStops: string[] = [];
-  const anglePerType = 360 / activeTypes.length;
-  let currentAngle = 0;
-
-  for (const type of (['podcast', 'place', 'event'] as const)) {
-    const count = contentTypes[type];
-    if (count > 0) {
-      const color = CONTENT_TYPE_CONFIG[type].pinColor;
-      gradientStops.push(`${color} ${currentAngle}deg ${currentAngle + anglePerType}deg`);
-      currentAngle += anglePerType;
-    }
-  }
+    .sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'podcast';
+  const color = CONTENT_TYPE_CONFIG[dominantType].pinColor;
 
   return (
     <MapMarker longitude={coordinates[0]} latitude={coordinates[1]}>
       <MarkerContent>
         <div
-          className="flex items-center justify-center rounded-full cursor-pointer shadow-lg font-bold"
+          className="flex items-center justify-center rounded-full cursor-pointer shadow-lg font-bold text-white"
           style={{
             width: size,
             height: size,
-            background: `conic-gradient(${gradientStops.join(', ')})`,
+            backgroundColor: color,
             fontSize: size > 44 ? 16 : 14,
-            color: '#fff',
-            textShadow: '0 1px 2px rgba(0,0,0,0.5)',
           }}
           onClick={onClick}
         >
