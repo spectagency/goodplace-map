@@ -32,10 +32,10 @@ export function TagFilter({ tags }: TagFilterProps) {
         <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
           Type
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide">
           <button
             onClick={clearContentTypeFilters}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+            className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
               activeContentTypeFilters.length === 0
                 ? 'bg-gray-800 text-white'
                 : 'bg-black/5 text-gray-600 hover:bg-black/10'
@@ -50,7 +50,7 @@ export function TagFilter({ tags }: TagFilterProps) {
               <button
                 key={type}
                 onClick={() => toggleContentTypeFilter(type)}
-                className="px-3 py-1.5 rounded-full text-sm font-medium transition-colors"
+                className="shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors"
                 style={{
                   backgroundColor: isActive ? config.pinColor : 'rgba(0,0,0,0.05)',
                   color: isActive ? (type === 'place' ? '#333' : 'white') : '#4b5563',
@@ -69,10 +69,10 @@ export function TagFilter({ tags }: TagFilterProps) {
           <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
             Tags
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide">
             <button
               onClick={clearAllFilters}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 activeTagFilters.length === 0 && activeContentTypeFilters.length === 0
                   ? 'bg-[#60977F] text-white'
                   : 'bg-black/5 text-gray-600 hover:bg-black/10'
@@ -86,7 +86,7 @@ export function TagFilter({ tags }: TagFilterProps) {
                 <button
                   key={tag.id}
                   onClick={() => toggleTagFilter(tag.id)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                     isActive
                       ? 'bg-[#60977F] text-white'
                       : 'bg-black/5 text-gray-600 hover:bg-black/10'

@@ -8,8 +8,8 @@ import { isPodcast, isPlace, isEvent, CONTENT_TYPE_CONFIG } from '@/types';
 import type { MapItem, Podcast, Place, Event } from '@/types';
 
 // Card dimensions for pin positioning calculations
-export const CARD_MIN_HEIGHT_VH = 40;
-export const CARD_MAX_HEIGHT_PX = 560;
+export const CARD_MIN_HEIGHT_VH = 45;
+export const CARD_MAX_HEIGHT_PX = 640;
 
 function getYouTubeEmbedUrl(url: string | null | undefined): string | null {
   if (!url || typeof url !== 'string') return null;
@@ -114,8 +114,9 @@ function RouteIcon() {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-      <polyline points="9 22 9 12 15 12 15 22" />
+      <path d="M18 8c0-2.2-1.8-4-4-4-2.2 0-4 1.8-4 4 0 2.2 4 8 4 8s4-5.8 4-8z" />
+      <circle cx="14" cy="8" r="1" />
+      <path d="M10 16c-4 0-6 1.3-6 3s2 3 6 3h4c4 0 6-1.3 6-3" />
     </svg>
   );
 }
@@ -308,7 +309,7 @@ export function PopupCard() {
               {/* Title */}
               <h2
                 id="card-title"
-                className="text-xl font-bold text-gray-900 mt-0 mb-2 flex-shrink-0"
+                className="text-base sm:text-xl font-bold text-gray-900 mt-0 mb-2 flex-shrink-0"
               >
                 {item.title}
               </h2>
@@ -330,7 +331,7 @@ export function PopupCard() {
 
               {/* Tags */}
               {item.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mb-3 flex-shrink-0">
+                <div className="flex gap-1.5 mb-3 flex-shrink-0 overflow-x-auto scrollbar-hide">
                   {item.tags.map((tag) => (
                     <TagPill key={tag.id} name={tag.name} />
                   ))}
@@ -357,11 +358,11 @@ export function PopupCard() {
                     <Button
                       variant="secondary"
                       onClick={handleShare}
-                      className="px-4"
+                      className="w-11 h-11 !p-0"
                       aria-label="Share"
                     >
                       {shareStatus === 'copied' ? (
-                        <span className="text-sm">Copied!</span>
+                        <span className="text-xs">Copied!</span>
                       ) : (
                         <ShareIcon />
                       )}
@@ -388,7 +389,7 @@ export function PopupCard() {
                   <Button
                     href={`https://www.google.com/maps/dir/?api=1&destination=${item.latitude},${item.longitude}`}
                     variant="secondary"
-                    className="px-4"
+                    className="w-11 h-11 !p-0"
                     aria-label="Get directions"
                     title="Get directions"
                   >
@@ -397,11 +398,11 @@ export function PopupCard() {
                   <Button
                     variant="secondary"
                     onClick={handleShare}
-                    className="px-4"
+                    className="w-11 h-11 !p-0"
                     aria-label="Share"
                   >
                     {shareStatus === 'copied' ? (
-                      <span className="text-sm">Copied!</span>
+                      <span className="text-xs">Copied!</span>
                     ) : (
                       <ShareIcon />
                     )}
@@ -420,11 +421,11 @@ export function PopupCard() {
                   <Button
                     variant="secondary"
                     onClick={handleShare}
-                    className="px-4"
+                    className="w-11 h-11 !p-0"
                     aria-label="Share"
                   >
                     {shareStatus === 'copied' ? (
-                      <span className="text-sm">Copied!</span>
+                      <span className="text-xs">Copied!</span>
                     ) : (
                       <ShareIcon />
                     )}

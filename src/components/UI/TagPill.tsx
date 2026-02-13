@@ -10,7 +10,7 @@ export function TagPill({ name, size = 'default' }: TagPillProps) {
 
   return (
     <span
-      className={`inline-block ${sizeClasses} bg-[#60977F]/10 text-gray-700 rounded-[12px] font-semibold uppercase tracking-wide`}
+      className={`inline-block shrink-0 whitespace-nowrap ${sizeClasses} bg-[#60977F]/10 text-gray-700 rounded-[12px] font-semibold uppercase tracking-wide`}
     >
       {name}
     </span>
