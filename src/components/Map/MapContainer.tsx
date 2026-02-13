@@ -104,13 +104,14 @@ export function MapContainer({
     }
   }, []);
 
-  // Read URL hash on mount (e.g. #stories/my-slug)
+  // Read ?share= query param on mount (e.g. ?share=stories/my-slug)
   useEffect(() => {
-    const hash = window.location.hash.slice(1);
-    if (!hash) return;
+    const params = new URLSearchParams(window.location.search);
+    const shareParam = params.get('share');
+    if (!shareParam) return;
 
     const pathMap: Record<string, string> = { stories: 'podcast', places: 'place', projects: 'event' };
-    const [section, ...slugParts] = hash.split('/');
+    const [section, ...slugParts] = shareParam.split('/');
     const slug = slugParts.join('/');
     if (pathMap[section] && slug) {
       navigateToItem(pathMap[section], slug);

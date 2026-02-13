@@ -142,25 +142,25 @@ export function PopupCard() {
   const { closeCard, card, openListView } = useAppStore();
   const [shareStatus, setShareStatus] = useState<'idle' | 'copied'>('idle');
 
-  // Generate share URL with hash fragment
-  // In iframe: use parent origin (e.g. goodplace.com/#stories/slug)
-  // Direct access: use own origin + basePath (e.g. goodplace-map.webflow.io/map#stories/slug)
+  // Generate share URL with ?share= query param
+  // In iframe: use parent origin (e.g. goodplace.com?share=stories/slug)
+  // Direct access: use own origin + basePath (e.g. goodplace-map.webflow.io/map?share=stories/slug)
   const getShareUrl = () => {
     if (!item?.slug) return '';
     const config = CONTENT_TYPE_CONFIG[item.type];
-    const hashPath = `#${config.sharePathPrefix}/${item.slug}`;
+    const shareParam = `share=${config.sharePathPrefix}/${item.slug}`;
 
     // Try to use parent origin when embedded in iframe
     try {
       if (window.parent !== window) {
-        return `${window.parent.location.origin}/${hashPath}`;
+        return `${window.parent.location.origin}?${shareParam}`;
       }
     } catch {
       // Cross-origin iframe — can't read parent origin
     }
 
     // Direct access: include /map basePath
-    return `${window.location.origin}/map${hashPath}`;
+    return `${window.location.origin}/map?${shareParam}`;
   };
 
   // Handle share button click - copy to clipboard
