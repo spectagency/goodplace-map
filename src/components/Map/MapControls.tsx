@@ -1,6 +1,7 @@
 'use client';
 
-import { useAppStore } from '@/store/useAppStore';
+import { useAppStore, useActiveContentTypeFilters, useIsListOpen } from '@/store/useAppStore';
+import { CONTENT_TYPE_CONFIG, type ContentType } from '@/types';
 
 export function ListViewToggle() {
   const { toggleListView, openListView, listView } = useAppStore();
@@ -53,6 +54,50 @@ export function ListViewToggle() {
             <line x1="3" y1="18" x2="3.01" y2="18" />
           </svg>
         </button>
+      </div>
+    </div>
+  );
+}
+
+const CONTENT_TYPES: ContentType[] = ['podcast', 'place', 'event'];
+
+export function ContentTypeToggle() {
+  const activeContentTypeFilters = useActiveContentTypeFilters();
+  const isListOpen = useIsListOpen();
+  const { toggleContentTypeFilter } = useAppStore();
+
+  if (isListOpen) return null;
+
+  return (
+    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
+      <div className="flex items-center gap-1 bg-white/80 backdrop-blur-[10px] rounded-full shadow-lg px-1.5 py-1.5">
+        {CONTENT_TYPES.map((type) => {
+          const config = CONTENT_TYPE_CONFIG[type];
+          const isActive =
+            activeContentTypeFilters.length === 0 ||
+            activeContentTypeFilters.includes(type);
+
+          return (
+            <button
+              key={type}
+              onClick={() => toggleContentTypeFilter(type)}
+              className="px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all"
+              style={{
+                backgroundColor: isActive ? config.pinColor : 'transparent',
+                color: isActive
+                  ? type === 'place'
+                    ? '#333'
+                    : 'white'
+                  : '#9ca3af',
+                opacity: isActive ? 1 : 0.2,
+              }}
+              aria-label={`${isActive ? 'Hide' : 'Show'} ${config.pluralLabel}`}
+              aria-pressed={isActive}
+            >
+              {config.pluralLabel}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

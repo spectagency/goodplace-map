@@ -8,8 +8,8 @@ export const CONTENT_TYPE_CONFIG: Record<ContentType, {
   pinColor: string;
 }> = {
   podcast: {
-    label: 'Podcast',
-    pluralLabel: 'Podcasts',
+    label: 'Story',
+    pluralLabel: 'Stories',
     pinColor: '#60977F', // Green
   },
   place: {
@@ -18,8 +18,8 @@ export const CONTENT_TYPE_CONFIG: Record<ContentType, {
     pinColor: '#FFE879', // Yellow
   },
   event: {
-    label: 'Event',
-    pluralLabel: 'Events',
+    label: 'Project',
+    pluralLabel: 'Projects',
     pinColor: '#5B9BD5', // Blue
   },
 };

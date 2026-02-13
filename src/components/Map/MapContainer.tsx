@@ -20,8 +20,8 @@ import {
 } from '@/store/useAppStore';
 import type { MapItem, Podcast, Place, Event as GoodEvent } from '@/types';
 import { CONTENT_TYPE_CONFIG } from '@/types';
-import { ListViewToggle } from './MapControls';
-import { CARD_MAX_HEIGHT_VH } from '@/components/Card/PopupCard';
+import { ListViewToggle, ContentTypeToggle } from './MapControls';
+
 
 const PRIMARY_GREEN = '#60977F';
 
@@ -199,6 +199,7 @@ export function MapContainer({
         <ZoomLevelIndicator />
       </Map>
       <ListViewToggle />
+      <ContentTypeToggle />
     </div>
   );
 }
@@ -530,18 +531,11 @@ function InitialItemPanHandler() {
     if (!map || !isLoaded || !pendingItem || hasHandledRef.current) return;
     hasHandledRef.current = true;
 
-    // Calculate offset to position pin just below the centered card
-    // Card typically fills to max-height with content (video + text + buttons)
-    const pinMargin = 15; // pixels below card
-    const cardMaxHeight = Math.round(window.innerHeight * CARD_MAX_HEIGHT_VH / 100);
-    const offsetY = cardMaxHeight / 2 + pinMargin;
-
-    // Use flyTo for a smooth curved path that zooms and pans together
+    // Fly to pin at center of screen
     const targetZoom = 18;
 
     map.flyTo({
       center: [pendingItem.longitude, pendingItem.latitude],
-      offset: [0, offsetY],
       zoom: targetZoom,
       speed: 2.7, // Fast animation
       curve: 1.2, // Less dramatic curve for quicker feel
@@ -763,17 +757,11 @@ function PanToSelectedPin() {
       const { item } = (e as CustomEvent).detail;
       if (!item || !isFinite(item.longitude) || !isFinite(item.latitude)) return;
 
-      // Calculate offset to position pin just below the centered card
-      // Card typically fills to max-height with content (video + text + buttons)
-      const pinMargin = 15; // pixels below card
-      const cardMaxHeight = Math.round(window.innerHeight * CARD_MAX_HEIGHT_VH / 100);
-      const offsetY = cardMaxHeight / 2 + pinMargin;
       const targetZoom = 18;
 
-      // Pan to the item location first
+      // Pan to pin at center of screen
       map.flyTo({
         center: [item.longitude, item.latitude],
-        offset: [0, offsetY],
         zoom: targetZoom,
         speed: 2.7, // Fast animation
         curve: 1.2, // Less dramatic curve for quicker feel
