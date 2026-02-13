@@ -76,6 +76,47 @@ export function MapContainer({
   const [{ initialZoom, minZoom }] = useState(getBreakpointZoom);
   const hasInitializedDataRef = useRef(false);
 
+  // Navigate to an item by type + slug, with retry if data hasn't loaded
+  const navigateToItem = useCallback((type: string | undefined, slug: string) => {
+    const tryNavigate = () => {
+      const state = useAppStore.getState();
+      const allItems = [...state.podcasts, ...state.places, ...state.events];
+      if (allItems.length === 0) return false;
+
+      const item = allItems.find(
+        (i) => i.slug === slug && (!type || i.type === type)
+      );
+      if (item) {
+        state.closeCard();
+        state.closeListView();
+        window.dispatchEvent(
+          new CustomEvent('pin-click', { detail: { item } })
+        );
+      }
+      return true;
+    };
+
+    if (!tryNavigate()) {
+      const interval = setInterval(() => {
+        if (tryNavigate()) clearInterval(interval);
+      }, 200);
+      setTimeout(() => clearInterval(interval), 10000);
+    }
+  }, []);
+
+  // Read URL hash on mount (e.g. #stories/my-slug)
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (!hash) return;
+
+    const pathMap: Record<string, string> = { stories: 'podcast', places: 'place', projects: 'event' };
+    const [section, ...slugParts] = hash.split('/');
+    const slug = slugParts.join('/');
+    if (pathMap[section] && slug) {
+      navigateToItem(pathMap[section], slug);
+    }
+  }, [navigateToItem]);
+
   // Listen for postMessage from parent website
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
@@ -84,42 +125,15 @@ export function MapContainer({
         useAppStore.getState().closeListView();
       }
 
-      // Handle navigateToItem from parent (e.g. Webflow CMS pages)
       if (event.data?.action === 'navigateToItem') {
         const { type, slug } = event.data;
         if (!slug) return;
-
-        const tryNavigate = () => {
-          const state = useAppStore.getState();
-          const allItems = [...state.podcasts, ...state.places, ...state.events];
-          if (allItems.length === 0) return false; // Data not loaded yet
-
-          const item = allItems.find(
-            (i) => i.slug === slug && (!type || i.type === type)
-          );
-          if (item) {
-            state.closeCard();
-            state.closeListView();
-            window.dispatchEvent(
-              new CustomEvent('pin-click', { detail: { item } })
-            );
-          }
-          return true;
-        };
-
-        // If data isn't loaded yet, retry until it is
-        if (!tryNavigate()) {
-          const interval = setInterval(() => {
-            if (tryNavigate()) clearInterval(interval);
-          }, 200);
-          // Give up after 10 seconds
-          setTimeout(() => clearInterval(interval), 10000);
-        }
+        navigateToItem(type, slug);
       }
     }
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  }, [navigateToItem]);
 
   // Initialize data from server (only once)
   useEffect(() => {
