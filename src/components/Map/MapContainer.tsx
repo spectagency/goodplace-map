@@ -76,12 +76,45 @@ export function MapContainer({
   const [{ initialZoom, minZoom }] = useState(getBreakpointZoom);
   const hasInitializedDataRef = useRef(false);
 
-  // Listen for postMessage from parent website to close cards
+  // Listen for postMessage from parent website
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
       if (event.data === 'closeCards') {
         useAppStore.getState().closeCard();
         useAppStore.getState().closeListView();
+      }
+
+      // Handle navigateToItem from parent (e.g. Webflow CMS pages)
+      if (event.data?.action === 'navigateToItem') {
+        const { type, slug } = event.data;
+        if (!slug) return;
+
+        const tryNavigate = () => {
+          const state = useAppStore.getState();
+          const allItems = [...state.podcasts, ...state.places, ...state.events];
+          if (allItems.length === 0) return false; // Data not loaded yet
+
+          const item = allItems.find(
+            (i) => i.slug === slug && (!type || i.type === type)
+          );
+          if (item) {
+            state.closeCard();
+            state.closeListView();
+            window.dispatchEvent(
+              new CustomEvent('pin-click', { detail: { item } })
+            );
+          }
+          return true;
+        };
+
+        // If data isn't loaded yet, retry until it is
+        if (!tryNavigate()) {
+          const interval = setInterval(() => {
+            if (tryNavigate()) clearInterval(interval);
+          }, 200);
+          // Give up after 10 seconds
+          setTimeout(() => clearInterval(interval), 10000);
+        }
       }
     }
     window.addEventListener('message', handleMessage);

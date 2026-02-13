@@ -142,15 +142,22 @@ export function PopupCard() {
   const { closeCard, card, openListView } = useAppStore();
   const [shareStatus, setShareStatus] = useState<'idle' | 'copied'>('idle');
 
-  // Generate share URL based on content type
+  // Generate share URL with hash fragment (read by parent homepage)
   const getShareUrl = () => {
-    if (!item?.slug) return window.location.origin;
-    // For now, all content types use the episodes route
-    // In the future, we can add /places/ and /events/ routes
-    if (item.type === 'podcast') {
-      return `${window.location.origin}/map/episodes/${item.slug}`;
+    if (!item?.slug) return '';
+    const config = CONTENT_TYPE_CONFIG[item.type];
+    let baseUrl = '';
+    try {
+      if (window.parent !== window) {
+        baseUrl = window.parent.location.origin;
+      }
+    } catch {
+      // Cross-origin fallback
     }
-    return `${window.location.origin}/map/${item.type}s/${item.slug}`;
+    if (!baseUrl) {
+      baseUrl = window.location.origin;
+    }
+    return `${baseUrl}/#${config.sharePathPrefix}/${item.slug}`;
   };
 
   // Handle share button click - copy to clipboard
@@ -165,22 +172,23 @@ export function PopupCard() {
     }
   };
 
-  // Reset URL to /map when closing card (if opened via direct URL)
+  // Reset URL to /map when closing card (if opened via direct URL or query params)
   const wasOpenedViaUrlRef = useRef(false);
 
   useEffect(() => {
-    // Check if we're on a content page on mount
-    if (isOpen && (
-      window.location.pathname.includes('/episodes/') ||
-      window.location.pathname.includes('/places/') ||
-      window.location.pathname.includes('/events/')
-    )) {
-      wasOpenedViaUrlRef.current = true;
+    if (isOpen) {
+      const hasSlugParam = new URLSearchParams(window.location.search).has('slug');
+      const isContentRoute =
+        window.location.pathname.includes('/episodes/') ||
+        window.location.pathname.includes('/places/') ||
+        window.location.pathname.includes('/events/');
+      if (hasSlugParam || isContentRoute) {
+        wasOpenedViaUrlRef.current = true;
+      }
     }
   }, [isOpen]);
 
   useEffect(() => {
-    // When card closes and was opened via URL, redirect to /map
     if (!isOpen && wasOpenedViaUrlRef.current) {
       wasOpenedViaUrlRef.current = false;
       window.history.replaceState({}, '', '/map');

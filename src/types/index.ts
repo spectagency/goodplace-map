@@ -6,21 +6,25 @@ export const CONTENT_TYPE_CONFIG: Record<ContentType, {
   label: string;
   pluralLabel: string;
   pinColor: string;
+  sharePathPrefix: string;
 }> = {
   podcast: {
     label: 'Story',
     pluralLabel: 'Stories',
     pinColor: '#60977F', // Green
+    sharePathPrefix: 'stories',
   },
   place: {
     label: 'Place',
     pluralLabel: 'Places',
     pinColor: '#FFE879', // Yellow
+    sharePathPrefix: 'places',
   },
   event: {
     label: 'Project',
     pluralLabel: 'Projects',
     pinColor: '#5B9BD5', // Blue
+    sharePathPrefix: 'projects',
   },
 };
 
