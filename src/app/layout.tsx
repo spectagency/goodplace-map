@@ -1,13 +1,6 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
 import { DevLinkProvider } from "@/devlink/DevLinkProvider";
-
-const ibmPlexSans = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-ibm-plex-sans",
-});
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -22,7 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${ibmPlexSans.variable} antialiased`}
+        className="antialiased"
       >
         <DevLinkProvider>
           {/* Add here any Navbar or Header you want to be present on all pages */}

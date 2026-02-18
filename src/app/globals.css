@@ -8,6 +8,38 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@font-face {
+  font-family: 'Acumin Pro';
+  src: url('/Acumin-RPro.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Acumin Pro';
+  src: url('/Acumin-ItPro.otf') format('opentype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Acumin Pro';
+  src: url('/Acumin-BdPro.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Acumin Pro';
+  src: url('/Acumin-BdItPro.otf') format('opentype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
 :root {
 
   /* Brand colors */
@@ -49,13 +81,14 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-ibm-plex-sans);
-  --font-mono: var(--font-ibm-plex-sans);
+  --font-sans: 'Acumin Pro', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Acumin Pro', ui-sans-serif, system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -235,5 +268,11 @@
   }
   .maplibregl-popup-tip {
     @apply hidden!;
+  }
+}
+
+@layer components {
+  body {
+    font-family: 'Acumin Pro', ui-sans-serif, system-ui, sans-serif;
   }
 }

@@ -142,25 +142,11 @@ export function PopupCard() {
   const { closeCard, card, openListView } = useAppStore();
   const [shareStatus, setShareStatus] = useState<'idle' | 'copied'>('idle');
 
-  // Generate share URL with ?share= query param
-  // In iframe: use parent origin (e.g. goodplace.com?share=stories/slug)
-  // Direct access: use own origin + basePath (e.g. goodplace-map.webflow.io/map?share=stories/slug)
+  // Generate share URL pointing to the Next.js app with ?share= query param
   const getShareUrl = () => {
     if (!item?.slug) return '';
     const config = CONTENT_TYPE_CONFIG[item.type];
-    const shareParam = `share=${config.sharePathPrefix}/${item.slug}`;
-
-    // Try to use parent origin when embedded in iframe
-    try {
-      if (window.parent !== window) {
-        return `${window.parent.location.origin}?${shareParam}`;
-      }
-    } catch {
-      // Cross-origin iframe — can't read parent origin
-    }
-
-    // Direct access: include /map basePath
-    return `${window.location.origin}/map?${shareParam}`;
+    return `${window.location.origin}/map?share=${config.sharePathPrefix}/${item.slug}`;
   };
 
   // Handle share button click - copy to clipboard
@@ -263,9 +249,9 @@ export function PopupCard() {
           <div
             className="w-[90vw] max-w-[450px]
               max-h-[calc(100vh-64px)] sm:max-h-[80vh]
-              bg-white rounded-[24px]
+              bg-white rounded-[16px] sm:rounded-[24px]
               shadow-[0_0_10px_rgba(117,117,117,0.25)]
-              overflow-hidden flex flex-col p-3
+              overflow-hidden flex flex-col p-2 sm:p-3
               animate-in fade-in duration-300"
             role="dialog"
             aria-modal="true"
@@ -273,7 +259,7 @@ export function PopupCard() {
           >
             {/* Thumbnail/Video section - fixed at top */}
             {item.thumbnailUrl ? (
-              <div className="relative w-full aspect-video bg-gray-100 flex-shrink-0 rounded-[12px] overflow-hidden">
+              <div className="relative w-full aspect-video bg-gray-100 flex-shrink-0 rounded-[8px] sm:rounded-[12px] overflow-hidden">
                 <img
                   src={item.thumbnailUrl}
                   alt={item.title}
@@ -281,7 +267,7 @@ export function PopupCard() {
                 />
               </div>
             ) : youtubeEmbedUrl ? (
-              <div className="relative w-full aspect-video bg-gray-100 flex-shrink-0 rounded-[12px] overflow-hidden">
+              <div className="relative w-full aspect-video bg-gray-100 flex-shrink-0 rounded-[8px] sm:rounded-[12px] overflow-hidden">
                 <iframe
                   src={youtubeEmbedUrl}
                   className="w-full h-full"
@@ -292,63 +278,68 @@ export function PopupCard() {
               </div>
             ) : null}
 
-            {/* Middle content section - scrollable when it overflows */}
-            <div className="flex-1 min-h-0 overflow-y-auto px-2 pt-2">
-              {/* Content type badge + Location name */}
-              <div className="flex items-center gap-2 mb-0.5">
-                <span
-                  className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded"
-                  style={{
-                    backgroundColor: `${typeConfig.pinColor}20`,
-                    color: typeConfig.pinColor,
-                  }}
+            {/* Middle content section */}
+            <div className="flex-1 min-h-0 flex flex-col px-2 pt-2">
+              {/* Fixed header: badge, title, metadata, tags */}
+              <div className="flex-shrink-0">
+                {/* Content type badge + Location name */}
+                <div className="flex items-center gap-2">
+                  <span
+                    className="text-xs font-semibold uppercase px-1.5 py-0.5 rounded"
+                    style={{
+                      backgroundColor: `${typeConfig.pinColor}20`,
+                      color: typeConfig.pinColor,
+                    }}
+                  >
+                    {typeConfig.label}
+                  </span>
+                  {item.locationName && (
+                    <p className="text-sm text-gray-500 uppercase tracking-wide m-0">
+                      {item.locationName}
+                    </p>
+                  )}
+                </div>
+
+                {/* Title */}
+                <h2
+                  id="card-title"
+                  className="text-base sm:text-xl font-bold text-gray-900 mt-0 mb-2 leading-tight"
                 >
-                  {typeConfig.label}
-                </span>
-                {item.locationName && (
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">
-                    {item.locationName}
+                  {item.title}
+                </h2>
+
+                {/* Event date (for events) */}
+                {isEvent(item) && item.eventDate && (
+                  <p className="text-sm text-gray-600 mb-2 flex items-center gap-1.5">
+                    <CalendarIcon />
+                    {formatEventDate(item.eventDate)}
                   </p>
+                )}
+
+                {/* Address (for places) */}
+                {isPlace(item) && item.address && (
+                  <p className="text-sm text-gray-600 mb-2">
+                    📍 {item.address}
+                  </p>
+                )}
+
+                {/* Tags */}
+                {item.tags.length > 0 && (
+                  <div className="flex gap-1.5 mb-3 overflow-x-auto scrollbar-hide">
+                    {item.tags.map((tag) => (
+                      <TagPill key={tag.id} name={tag.name} />
+                    ))}
+                  </div>
                 )}
               </div>
 
-              {/* Title */}
-              <h2
-                id="card-title"
-                className="text-base sm:text-xl font-bold text-gray-900 mt-0 mb-2"
-              >
-                {item.title}
-              </h2>
-
-              {/* Event date (for events) */}
-              {isEvent(item) && item.eventDate && (
-                <p className="text-sm text-gray-600 mb-2 flex items-center gap-1.5">
-                  <CalendarIcon />
-                  {formatEventDate(item.eventDate)}
-                </p>
-              )}
-
-              {/* Address (for places) */}
-              {isPlace(item) && item.address && (
-                <p className="text-sm text-gray-600 mb-2">
-                  📍 {item.address}
-                </p>
-              )}
-
-              {/* Tags */}
-              {item.tags.length > 0 && (
-                <div className="flex gap-1.5 mb-3 overflow-x-auto scrollbar-hide">
-                  {item.tags.map((tag) => (
-                    <TagPill key={tag.id} name={tag.name} />
-                  ))}
-                </div>
-              )}
-
-              {/* Description - full text, scrolls with the content above */}
+              {/* Scrollable description */}
               {item.description && (
-                <p className="text-sm text-gray-600 leading-relaxed mb-2">
-                  {item.description}
-                </p>
+                <div className="flex-1 min-h-0 overflow-y-auto">
+                  <p className="text-sm text-gray-600 leading-snug mb-2">
+                    {item.description}
+                  </p>
+                </div>
               )}
             </div>
 

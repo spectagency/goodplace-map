@@ -46,6 +46,12 @@ export function ListViewModal() {
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, closeListView]);
 
+  const handleRandomClick = () => {
+    if (filteredItems.length === 0) return;
+    const randomItem = filteredItems[Math.floor(Math.random() * filteredItems.length)];
+    handleItemClick(randomItem);
+  };
+
   const handleItemClick = (item: MapItem) => {
     // Save scroll position
     if (listRef.current) {
@@ -89,9 +95,15 @@ export function ListViewModal() {
             filteredCount={filteredItems.length}
             onFilterToggle={() => setIsFilterOpen(!isFilterOpen)}
             isFilterOpen={isFilterOpen}
+            onRandom={handleRandomClick}
           />
 
-          {isFilterOpen && <TagFilter tags={tags} />}
+          <div
+            className="overflow-hidden transition-all duration-200 ease-in-out"
+            style={{ maxHeight: isFilterOpen ? '300px' : '0px', opacity: isFilterOpen ? 1 : 0 }}
+          >
+            <TagFilter tags={tags} />
+          </div>
 
           <div
             ref={listRef}

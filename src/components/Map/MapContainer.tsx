@@ -795,7 +795,6 @@ function PanToSelectedPin() {
       const handleZoom = () => {
         if (hasOpenedCard) return;
         const currentZoom = map.getZoom();
-        // Open card when within 0.5 zoom levels of target
         if (currentZoom >= targetZoom - 0.5) {
           hasOpenedCard = true;
           openCard(item, !!fromList);
