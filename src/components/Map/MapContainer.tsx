@@ -104,26 +104,16 @@ export function MapContainer({
     }
   }, []);
 
-  // Read ?share= query param on mount (e.g. ?share=stories/my-slug)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const shareParam = params.get('share');
-    if (!shareParam) return;
-
-    const pathMap: Record<string, string> = { stories: 'podcast', places: 'place', projects: 'event' };
-    const [section, ...slugParts] = shareParam.split('/');
-    const slug = slugParts.join('/');
-    if (pathMap[section] && slug) {
-      navigateToItem(pathMap[section], slug);
-    }
-  }, [navigateToItem]);
-
-  // Listen for postMessage from parent website
+  // PostMessage communication with parent website (when embedded in iframe)
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
       if (event.data === 'closeCards') {
         useAppStore.getState().closeCard();
         useAppStore.getState().closeListView();
+      }
+
+      if (event.data?.action === 'parentOrigin') {
+        useAppStore.getState().setParentOrigin(event.data.origin);
       }
 
       if (event.data?.action === 'navigateToItem') {
@@ -133,6 +123,12 @@ export function MapContainer({
       }
     }
     window.addEventListener('message', handleMessage);
+
+    // Request parent origin (for share URL generation)
+    if (window.parent !== window) {
+      window.parent.postMessage({ action: 'requestParentOrigin' }, '*');
+    }
+
     return () => window.removeEventListener('message', handleMessage);
   }, [navigateToItem]);
 

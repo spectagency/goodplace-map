@@ -153,6 +153,9 @@ export interface AppState {
 
   // Initial Load (for URL-based navigation)
   initialLoad: InitialLoadState;
+
+  // Parent origin (for share URLs when embedded in iframe)
+  parentOrigin: string | null;
 }
 
 // Action types for the store
@@ -179,6 +182,9 @@ export interface AppActions {
   // Initial load actions (for URL-based navigation - pan first, then open)
   setPendingInitialItem: (item: MapItem, notFoundMessage?: string | null) => void;
   clearPendingInitialItem: () => void;
+
+  // Parent origin action
+  setParentOrigin: (origin: string) => void;
 
   // List view actions
   openListView: (withFilters?: boolean) => void;

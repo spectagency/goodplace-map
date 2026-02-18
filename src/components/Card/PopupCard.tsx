@@ -141,12 +141,14 @@ export function PopupCard() {
   const isOpen = useIsCardOpen();
   const { closeCard, card, openListView } = useAppStore();
   const [shareStatus, setShareStatus] = useState<'idle' | 'copied'>('idle');
+  const parentOrigin = useAppStore((state) => state.parentOrigin);
 
-  // Generate share URL pointing to the Next.js app with ?share= query param
+  // Generate share URL pointing to the parent site with ?share= query param
   const getShareUrl = () => {
     if (!item?.slug) return '';
     const config = CONTENT_TYPE_CONFIG[item.type];
-    return `${window.location.origin}/map?share=${config.sharePathPrefix}/${item.slug}`;
+    const baseUrl = parentOrigin || window.location.origin;
+    return `${baseUrl}?share=${config.sharePathPrefix}/${item.slug}`;
   };
 
   // Handle share button click - copy to clipboard
@@ -156,33 +158,15 @@ export function PopupCard() {
       await navigator.clipboard.writeText(shareUrl);
       setShareStatus('copied');
       setTimeout(() => setShareStatus('idle'), 2000);
-    } catch (err) {
-      console.error('Failed to copy to clipboard:', err);
-    }
-  };
-
-  // Reset URL to /map when closing card (if opened via direct URL or query params)
-  const wasOpenedViaUrlRef = useRef(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      const hasSlugParam = new URLSearchParams(window.location.search).has('slug');
-      const isContentRoute =
-        window.location.pathname.includes('/episodes/') ||
-        window.location.pathname.includes('/places/') ||
-        window.location.pathname.includes('/events/');
-      if (hasSlugParam || isContentRoute) {
-        wasOpenedViaUrlRef.current = true;
+    } catch {
+      // Clipboard API blocked in iframe — ask parent to copy
+      if (window.parent !== window) {
+        window.parent.postMessage({ action: 'copyToClipboard', text: shareUrl }, '*');
+        setShareStatus('copied');
+        setTimeout(() => setShareStatus('idle'), 2000);
       }
     }
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (!isOpen && wasOpenedViaUrlRef.current) {
-      wasOpenedViaUrlRef.current = false;
-      window.history.replaceState({}, '', '/map');
-    }
-  }, [isOpen]);
+  };
 
   // Handle click outside
   useEffect(() => {

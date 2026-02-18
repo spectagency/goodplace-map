@@ -55,6 +55,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
     pendingNotFoundMessage: null,
   },
 
+  // Parent origin (for share URLs when embedded in iframe)
+  parentOrigin: null,
+
   // Data actions
   setPodcasts: (podcasts: Podcast[]) => set({ podcasts, isLoading: false }),
 
@@ -130,6 +133,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
         pendingNotFoundMessage: null,
       },
     }),
+
+  // Parent origin action
+  setParentOrigin: (origin: string) => set({ parentOrigin: origin }),
 
   // List view actions
   openListView: (withFilters = false) =>
