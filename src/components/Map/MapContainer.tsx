@@ -490,9 +490,14 @@ function FitBoundsOnLoad({ items }: { items: MapItem[] }) {
   const hasFittedRef = useRef(false);
 
   useEffect(() => {
-    // Skip fitBounds if there's a pending initial item (URL-based navigation)
-    // In that case, InitialItemPanHandler will handle the map movement
-    if (!map || !isLoaded || items.length === 0 || hasFittedRef.current || pendingItem) return;
+    if (!map || !isLoaded || items.length === 0 || hasFittedRef.current) return;
+
+    // Skip fitBounds if navigating to a specific item, but mark as fitted
+    // so we don't zoom out when the pending item is later cleared
+    if (pendingItem) {
+      hasFittedRef.current = true;
+      return;
+    }
 
     // Calculate bounds
     const lngs = items.map((p) => p.longitude);
