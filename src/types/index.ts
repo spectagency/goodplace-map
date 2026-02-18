@@ -17,13 +17,13 @@ export const CONTENT_TYPE_CONFIG: Record<ContentType, {
   place: {
     label: 'Place',
     pluralLabel: 'Places',
-    pinColor: '#FFE879', // Yellow
+    pinColor: '#cd7653', // Terracotta
     sharePathPrefix: 'places',
   },
   event: {
     label: 'Project',
     pluralLabel: 'Projects',
-    pinColor: '#5B9BD5', // Blue
+    pinColor: '#e0b259', // Gold
     sharePathPrefix: 'projects',
   },
 };
