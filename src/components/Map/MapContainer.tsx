@@ -78,25 +78,20 @@ export function MapContainer({
 
   // Navigate to an item by type + slug, with retry if data hasn't loaded
   const navigateToItem = useCallback((type: string | undefined, slug: string) => {
-    console.log('[navigateToItem] called with type:', type, 'slug:', slug);
     const tryNavigate = () => {
       const state = useAppStore.getState();
       const allItems = [...state.podcasts, ...state.places, ...state.events];
-      console.log('[navigateToItem] allItems count:', allItems.length);
       if (allItems.length === 0) return false;
 
       const item = allItems.find(
         (i) => i.slug === slug && (!type || i.type === type)
       );
       if (item) {
-        console.log('[navigateToItem] found item:', item.title, '- dispatching pin-click');
         state.closeCard();
         state.closeListView();
-        window.dispatchEvent(
-          new CustomEvent('pin-click', { detail: { item } })
-        );
-      } else {
-        console.log('[navigateToItem] item NOT found. Available slugs:', allItems.map(i => `${i.type}:${i.slug}`));
+        // Use pendingInitialItem so InitialItemPanHandler picks it up
+        // when the map is ready (avoids race condition with pin-click events)
+        state.setPendingInitialItem(item);
       }
       return true;
     };
@@ -112,21 +107,17 @@ export function MapContainer({
   // PostMessage communication with parent website (when embedded in iframe)
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
-      console.log('[iframe] received message:', event.data);
-
       if (event.data === 'closeCards') {
         useAppStore.getState().closeCard();
         useAppStore.getState().closeListView();
       }
 
       if (event.data?.action === 'parentOrigin') {
-        console.log('[iframe] storing parent origin:', event.data.origin);
         useAppStore.getState().setParentOrigin(event.data.origin);
       }
 
       if (event.data?.action === 'navigateToItem') {
         const { type, slug } = event.data;
-        console.log('[iframe] navigateToItem:', type, slug);
         if (!slug) return;
         navigateToItem(type, slug);
       }
@@ -135,10 +126,7 @@ export function MapContainer({
 
     // Request parent origin (for share URL generation)
     if (window.parent !== window) {
-      console.log('[iframe] sending requestParentOrigin to parent');
       window.parent.postMessage({ action: 'requestParentOrigin' }, '*');
-    } else {
-      console.log('[iframe] not in iframe, skipping requestParentOrigin');
     }
 
     return () => window.removeEventListener('message', handleMessage);
@@ -554,11 +542,11 @@ function InitialItemPanHandler() {
   const pendingItem = usePendingInitialItem();
   const pendingNotFoundMessage = usePendingNotFoundMessage();
   const { openCard, clearPendingInitialItem } = useAppStore();
-  const hasHandledRef = useRef(false);
+  const lastHandledIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!map || !isLoaded || !pendingItem || hasHandledRef.current) return;
-    hasHandledRef.current = true;
+    if (!map || !isLoaded || !pendingItem || lastHandledIdRef.current === pendingItem.id) return;
+    lastHandledIdRef.current = pendingItem.id;
 
     // Fly to pin at center of screen
     const targetZoom = 18;
