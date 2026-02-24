@@ -1,7 +1,7 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { getDb, tags } from '@/db';
 import { asc } from 'drizzle-orm';
-import { getTagsFromWebflow, type WebflowEnv } from '@/lib/podcasts';
+import { fetchTagsFromCollection, type WebflowEnv } from '@/lib/shared';
 
 export async function GET() {
   const { env } = await getCloudflareContext({ async: true });
@@ -33,13 +33,30 @@ async function fetchFromDatabase(env: { DB: D1Database }): Promise<Response> {
 }
 
 async function fetchFromWebflow(env: WebflowEnv): Promise<Response> {
-  const webflowEnv: WebflowEnv = {
-    WEBFLOW_SITE_API_TOKEN: env.WEBFLOW_SITE_API_TOKEN,
-    WEBFLOW_STORIES_COLLECTION_ID: env.WEBFLOW_STORIES_COLLECTION_ID,
-    WEBFLOW_STORY_TAGS_COLLECTION_ID: env.WEBFLOW_STORY_TAGS_COLLECTION_ID,
-  };
+  const token = env.WEBFLOW_SITE_API_TOKEN;
 
-  const tagList = await getTagsFromWebflow(webflowEnv);
+  // Fetch tags from all tag collections in parallel
+  const collectionIds = [
+    env.WEBFLOW_STORY_TAGS_COLLECTION_ID,
+    env.WEBFLOW_PLACE_TAGS_COLLECTION_ID,
+    env.WEBFLOW_INITIATIVE_TAGS_COLLECTION_ID,
+  ].filter((id): id is string => !!id);
+
+  const tagArrays = await Promise.all(
+    collectionIds.map((id) => fetchTagsFromCollection(token, id))
+  );
+
+  // Deduplicate by ID
+  const allTagsMap = new Map<string, (typeof tagArrays)[0][0]>();
+  for (const tagArray of tagArrays) {
+    for (const tag of tagArray) {
+      allTagsMap.set(tag.id, tag);
+    }
+  }
+
+  const tagList = Array.from(allTagsMap.values()).sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
 
   return Response.json(tagList);
 }

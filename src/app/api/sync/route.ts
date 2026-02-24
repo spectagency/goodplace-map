@@ -1,5 +1,15 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare';
-import { getDb, podcasts, tags, podcastTags } from '@/db';
+import {
+  getDb,
+  podcasts,
+  tags,
+  podcastTags,
+  places,
+  placeTags,
+  initiatives,
+  initiativeTags,
+  type DbClient,
+} from '@/db';
 import { eq } from 'drizzle-orm';
 
 interface WebflowItem {
@@ -16,6 +26,15 @@ interface WebflowListResponse {
   };
 }
 
+// ============================================
+// Webflow field data interfaces per content type
+// ============================================
+
+interface WebflowTagFieldData {
+  name: string;
+  slug?: string;
+}
+
 interface WebflowPodcastFieldData {
   name: string;
   slug?: string;
@@ -27,28 +46,64 @@ interface WebflowPodcastFieldData {
   'button-text'?: string;
   'latitude-2'?: string | number;
   'longitude-2'?: string | number;
-  'location-coordinates'?: string; // Combined format: "lat, lng"
+  'location-coordinates'?: string;
   'location-name'?: string;
   'published-date'?: string;
+  'episode-tags'?: string[];
+}
+
+interface WebflowPlaceFieldData {
+  name: string;
+  slug?: string;
+  description?: string;
+  image?: { url: string };
+  'cover-image'?: { url: string };
+  'youtube-link'?: { url: string } | string;
+  'website-link'?: string;
+  'button-text'?: string;
+  'location-coordinates'?: string;
+  'location-name'?: string;
   tags?: string[];
 }
 
-interface WebflowTagFieldData {
+interface WebflowInitiativeFieldData {
   name: string;
   slug?: string;
+  description?: string;
+  'thumbnail-image-2'?: { url: string };
+  'cover-image-2'?: { url: string };
+  'video-link'?: { url: string };
+  'playlist-link-2'?: string;
+  'button-text-2'?: string;
+  'location-coordinates'?: string;
+  'location-name'?: string;
+  'initiative-tags-2'?: string[];
 }
+
+// ============================================
+// Env type
+// ============================================
+
+interface SyncEnv {
+  DB: D1Database;
+  WEBFLOW_SITE_API_TOKEN: string;
+  WEBFLOW_STORIES_COLLECTION_ID: string;
+  WEBFLOW_STORY_TAGS_COLLECTION_ID?: string;
+  WEBFLOW_PLACES_COLLECTION_ID?: string;
+  WEBFLOW_PLACE_TAGS_COLLECTION_ID?: string;
+  WEBFLOW_INITIATIVES_COLLECTION_ID?: string;
+  WEBFLOW_INITIATIVE_TAGS_COLLECTION_ID?: string;
+}
+
+// ============================================
+// Route handler
+// ============================================
 
 export async function POST(request: Request) {
   const { env } = await getCloudflareContext({ async: true });
+  const typedEnv = env as unknown as SyncEnv;
 
-  // Cast env to include our custom variables
-  const typedEnv = env as typeof env & {
-    WEBFLOW_SITE_API_TOKEN: string;
-    WEBFLOW_STORIES_COLLECTION_ID: string;
-    WEBFLOW_STORY_TAGS_COLLECTION_ID?: string;
-  };
-
-  // Check for authorization (simple bearer token check)
+  // Check for authorization
   const authHeader = request.headers.get('authorization');
   const expectedToken = typedEnv.WEBFLOW_SITE_API_TOKEN;
 
@@ -59,23 +114,35 @@ export async function POST(request: Request) {
   const db = getDb(env.DB);
 
   try {
-    // Fetch and sync tags first (podcasts reference tags)
-    const tagsCollectionId = typedEnv.WEBFLOW_STORY_TAGS_COLLECTION_ID;
-    if (tagsCollectionId) {
-      await syncTags(db, tagsCollectionId, expectedToken);
+    const results: Record<string, number> = {};
+
+    // Sync all tag collections first (content items reference tags)
+    if (typedEnv.WEBFLOW_STORY_TAGS_COLLECTION_ID) {
+      results.storyTags = await syncTagsFromCollection(db, typedEnv.WEBFLOW_STORY_TAGS_COLLECTION_ID, expectedToken);
+    }
+    if (typedEnv.WEBFLOW_PLACE_TAGS_COLLECTION_ID) {
+      results.placeTags = await syncTagsFromCollection(db, typedEnv.WEBFLOW_PLACE_TAGS_COLLECTION_ID, expectedToken);
+    }
+    if (typedEnv.WEBFLOW_INITIATIVE_TAGS_COLLECTION_ID) {
+      results.initiativeTags = await syncTagsFromCollection(db, typedEnv.WEBFLOW_INITIATIVE_TAGS_COLLECTION_ID, expectedToken);
     }
 
-    // Fetch and sync podcasts
-    const podcastsCollectionId = typedEnv.WEBFLOW_STORIES_COLLECTION_ID;
-    if (podcastsCollectionId) {
-      const count = await syncPodcasts(db, podcastsCollectionId, expectedToken);
-      return Response.json({
-        success: true,
-        message: `Synced ${count} podcasts`,
-      });
+    // Sync all content types
+    if (typedEnv.WEBFLOW_STORIES_COLLECTION_ID) {
+      results.podcasts = await syncPodcasts(db, typedEnv.WEBFLOW_STORIES_COLLECTION_ID, expectedToken);
+    }
+    if (typedEnv.WEBFLOW_PLACES_COLLECTION_ID) {
+      results.places = await syncPlaces(db, typedEnv.WEBFLOW_PLACES_COLLECTION_ID, expectedToken);
+    }
+    if (typedEnv.WEBFLOW_INITIATIVES_COLLECTION_ID) {
+      results.initiatives = await syncInitiatives(db, typedEnv.WEBFLOW_INITIATIVES_COLLECTION_ID, expectedToken);
     }
 
-    return Response.json({ error: 'Missing collection ID' }, { status: 400 });
+    return Response.json({
+      success: true,
+      message: 'Sync complete',
+      results,
+    });
   } catch (error) {
     console.error('Sync error:', error);
     return Response.json(
@@ -85,33 +152,91 @@ export async function POST(request: Request) {
   }
 }
 
-async function syncTags(
-  db: ReturnType<typeof getDb>,
+// ============================================
+// Helpers
+// ============================================
+
+async function fetchWebflowItems(collectionId: string, token: string): Promise<WebflowItem[]> {
+  const allItems: WebflowItem[] = [];
+  let offset = 0;
+  const limit = 100;
+
+  while (true) {
+    const response = await fetch(
+      `https://api.webflow.com/v2/collections/${collectionId}/items?limit=${limit}&offset=${offset}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Webflow API error for collection ${collectionId}: ${response.statusText}`);
+    }
+
+    const data = (await response.json()) as WebflowListResponse;
+    allItems.push(...(data.items || []));
+
+    // Check if there are more pages
+    if (!data.pagination || allItems.length >= data.pagination.total) {
+      break;
+    }
+    offset += limit;
+  }
+
+  return allItems;
+}
+
+function parseCoordinates(fieldData: Record<string, unknown>): { latitude: number; longitude: number } | null {
+  // Try combined location-coordinates field first (format: "lat, lng")
+  const coordString = fieldData['location-coordinates'] as string | undefined;
+  if (coordString) {
+    const parts = coordString.split(',').map((s) => s.trim());
+    if (parts.length === 2) {
+      const lat = parseFloat(parts[0]);
+      const lng = parseFloat(parts[1]);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        return { latitude: lat, longitude: lng };
+      }
+    }
+  }
+
+  // Fall back to separate latitude-2/longitude-2 fields
+  const lat2 = fieldData['latitude-2'];
+  const lng2 = fieldData['longitude-2'];
+  if (lat2 !== undefined && lng2 !== undefined) {
+    const lat = typeof lat2 === 'string' ? parseFloat(lat2) : (lat2 as number);
+    const lng = typeof lng2 === 'string' ? parseFloat(lng2) : (lng2 as number);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      return { latitude: lat, longitude: lng };
+    }
+  }
+
+  return null;
+}
+
+function parseYoutubeLink(value: unknown): string | undefined {
+  if (typeof value === 'object' && value !== null && 'url' in value) {
+    return (value as { url: string }).url;
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  return undefined;
+}
+
+// ============================================
+// Tags sync (shared across content types)
+// ============================================
+
+async function syncTagsFromCollection(
+  db: DbClient,
   collectionId: string,
   token: string
 ): Promise<number> {
-  const response = await fetch(
-    `https://api.webflow.com/v2/collections/${collectionId}/items?limit=100`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
-
-  if (!response.ok) {
-    console.error('Failed to fetch tags:', response.statusText);
-    return 0;
-  }
-
-  const data = (await response.json()) as WebflowListResponse;
-  const now = new Date().toISOString();
+  const items = await fetchWebflowItems(collectionId, token);
   let count = 0;
 
-  for (const item of data.items || []) {
+  for (const item of items) {
     const fieldData = item.fieldData as unknown as WebflowTagFieldData;
 
-    // Check if tag exists
     const existing = await db
       .select({ id: tags.id })
       .from(tags)
@@ -119,7 +244,6 @@ async function syncTags(
       .get();
 
     if (existing) {
-      // Update
       await db
         .update(tags)
         .set({
@@ -128,7 +252,6 @@ async function syncTags(
         })
         .where(eq(tags.webflowItemId, item.id));
     } else {
-      // Insert
       await db.insert(tags).values({
         id: crypto.randomUUID(),
         webflowItemId: item.id,
@@ -142,69 +265,30 @@ async function syncTags(
   return count;
 }
 
+// ============================================
+// Podcasts sync
+// ============================================
+
 async function syncPodcasts(
-  db: ReturnType<typeof getDb>,
+  db: DbClient,
   collectionId: string,
   token: string
 ): Promise<number> {
-  const response = await fetch(
-    `https://api.webflow.com/v2/collections/${collectionId}/items?limit=100`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch podcasts: ${response.statusText}`);
-  }
-
-  const data = (await response.json()) as WebflowListResponse;
+  const items = await fetchWebflowItems(collectionId, token);
   const now = new Date().toISOString();
   let count = 0;
 
-  for (const item of data.items || []) {
+  for (const item of items) {
     const fieldData = item.fieldData as unknown as WebflowPodcastFieldData;
 
-    // Parse coordinates - support both separate fields and combined format
-    let latitude: number | undefined;
-    let longitude: number | undefined;
-
-    // Try combined location-coordinates field first (format: "lat, lng")
-    if (fieldData['location-coordinates']) {
-      const coordString = fieldData['location-coordinates'];
-      const parts = coordString.split(',').map((s) => s.trim());
-      if (parts.length === 2) {
-        latitude = parseFloat(parts[0]);
-        longitude = parseFloat(parts[1]);
-      }
-    }
-
-    // Fall back to separate latitude-2/longitude-2 fields
-    if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
-      latitude =
-        typeof fieldData['latitude-2'] === 'string'
-          ? parseFloat(fieldData['latitude-2'])
-          : fieldData['latitude-2'];
-      longitude =
-        typeof fieldData['longitude-2'] === 'string'
-          ? parseFloat(fieldData['longitude-2'])
-          : fieldData['longitude-2'];
-    }
-
-    if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
+    const coords = parseCoordinates(item.fieldData);
+    if (!coords) {
       console.log('Skipping podcast without valid coordinates:', item.id);
       continue;
     }
 
-    // Parse YouTube link
-    const youtubeLink =
-      typeof fieldData['youtube-link'] === 'object'
-        ? fieldData['youtube-link']?.url
-        : fieldData['youtube-link'];
+    const youtubeLink = parseYoutubeLink(fieldData['youtube-link']);
 
-    // Check if podcast exists
     const existing = await db
       .select({ id: podcasts.id })
       .from(podcasts)
@@ -215,7 +299,6 @@ async function syncPodcasts(
 
     if (existing) {
       podcastId = existing.id;
-      // Update
       await db
         .update(podcasts)
         .set({
@@ -227,8 +310,8 @@ async function syncPodcasts(
           youtubeLink,
           buttonText: fieldData['button-text'],
           spotifyLink: fieldData['spotify-link'],
-          latitude,
-          longitude,
+          latitude: coords.latitude,
+          longitude: coords.longitude,
           locationName: fieldData['location-name'],
           publishedAt: fieldData['published-date'],
           updatedAt: now,
@@ -236,7 +319,6 @@ async function syncPodcasts(
         .where(eq(podcasts.webflowItemId, item.id));
     } else {
       podcastId = crypto.randomUUID();
-      // Insert
       await db.insert(podcasts).values({
         id: podcastId,
         webflowItemId: item.id,
@@ -248,8 +330,8 @@ async function syncPodcasts(
         youtubeLink,
         buttonText: fieldData['button-text'],
         spotifyLink: fieldData['spotify-link'],
-        latitude,
-        longitude,
+        latitude: coords.latitude,
+        longitude: coords.longitude,
         locationName: fieldData['location-name'],
         publishedAt: fieldData['published-date'],
         createdAt: now,
@@ -258,29 +340,238 @@ async function syncPodcasts(
     }
 
     // Sync tags
-    if (fieldData.tags && Array.isArray(fieldData.tags)) {
-      // Delete existing tags
-      await db.delete(podcastTags).where(eq(podcastTags.podcastId, podcastId));
-
-      // Add new tags
-      for (const tagWebflowId of fieldData.tags) {
-        const tag = await db
-          .select({ id: tags.id })
-          .from(tags)
-          .where(eq(tags.webflowItemId, tagWebflowId))
-          .get();
-
-        if (tag) {
-          await db.insert(podcastTags).values({
-            podcastId,
-            tagId: tag.id,
-          });
-        }
-      }
+    const tagIds = fieldData['episode-tags'] || [];
+    if (tagIds.length > 0) {
+      await syncPodcastTagJunction(db, podcastId, tagIds);
     }
 
     count++;
   }
 
   return count;
+}
+
+async function syncPodcastTagJunction(db: DbClient, podcastId: string, tagWebflowIds: string[]) {
+  await db.delete(podcastTags).where(eq(podcastTags.podcastId, podcastId));
+
+  for (const tagWebflowId of tagWebflowIds) {
+    const tag = await db
+      .select({ id: tags.id })
+      .from(tags)
+      .where(eq(tags.webflowItemId, tagWebflowId))
+      .get();
+
+    if (tag) {
+      await db.insert(podcastTags).values({
+        podcastId,
+        tagId: tag.id,
+      });
+    }
+  }
+}
+
+// ============================================
+// Places sync
+// ============================================
+
+async function syncPlaces(
+  db: DbClient,
+  collectionId: string,
+  token: string
+): Promise<number> {
+  const items = await fetchWebflowItems(collectionId, token);
+  const now = new Date().toISOString();
+  let count = 0;
+
+  for (const item of items) {
+    const fieldData = item.fieldData as unknown as WebflowPlaceFieldData;
+
+    const coords = parseCoordinates(item.fieldData);
+    if (!coords) {
+      console.log('Skipping place without valid coordinates:', item.id);
+      continue;
+    }
+
+    const youtubeLink = parseYoutubeLink(fieldData['youtube-link']);
+
+    const existing = await db
+      .select({ id: places.id })
+      .from(places)
+      .where(eq(places.webflowItemId, item.id))
+      .get();
+
+    let placeId: string;
+
+    if (existing) {
+      placeId = existing.id;
+      await db
+        .update(places)
+        .set({
+          title: fieldData.name,
+          slug: fieldData.slug,
+          description: fieldData.description,
+          thumbnailUrl: fieldData.image?.url,
+          mainImageUrl: fieldData['cover-image']?.url,
+          youtubeLink,
+          buttonText: fieldData['button-text'],
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          locationName: fieldData['location-name'],
+          websiteUrl: fieldData['website-link'],
+          updatedAt: now,
+        })
+        .where(eq(places.webflowItemId, item.id));
+    } else {
+      placeId = crypto.randomUUID();
+      await db.insert(places).values({
+        id: placeId,
+        webflowItemId: item.id,
+        title: fieldData.name,
+        slug: fieldData.slug,
+        description: fieldData.description,
+        thumbnailUrl: fieldData.image?.url,
+        mainImageUrl: fieldData['cover-image']?.url,
+        youtubeLink,
+        buttonText: fieldData['button-text'],
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        locationName: fieldData['location-name'],
+        websiteUrl: fieldData['website-link'],
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    // Sync tags
+    const tagIds = fieldData.tags || [];
+    if (tagIds.length > 0) {
+      await syncPlaceTagJunction(db, placeId, tagIds);
+    }
+
+    count++;
+  }
+
+  return count;
+}
+
+async function syncPlaceTagJunction(db: DbClient, placeId: string, tagWebflowIds: string[]) {
+  await db.delete(placeTags).where(eq(placeTags.placeId, placeId));
+
+  for (const tagWebflowId of tagWebflowIds) {
+    const tag = await db
+      .select({ id: tags.id })
+      .from(tags)
+      .where(eq(tags.webflowItemId, tagWebflowId))
+      .get();
+
+    if (tag) {
+      await db.insert(placeTags).values({
+        placeId,
+        tagId: tag.id,
+      });
+    }
+  }
+}
+
+// ============================================
+// Initiatives sync
+// ============================================
+
+async function syncInitiatives(
+  db: DbClient,
+  collectionId: string,
+  token: string
+): Promise<number> {
+  const items = await fetchWebflowItems(collectionId, token);
+  const now = new Date().toISOString();
+  let count = 0;
+
+  for (const item of items) {
+    const fieldData = item.fieldData as unknown as WebflowInitiativeFieldData;
+
+    const coords = parseCoordinates(item.fieldData);
+    if (!coords) {
+      console.log('Skipping initiative without valid coordinates:', item.id);
+      continue;
+    }
+
+    const youtubeLink = parseYoutubeLink(fieldData['video-link']);
+
+    const existing = await db
+      .select({ id: initiatives.id })
+      .from(initiatives)
+      .where(eq(initiatives.webflowItemId, item.id))
+      .get();
+
+    let initiativeId: string;
+
+    if (existing) {
+      initiativeId = existing.id;
+      await db
+        .update(initiatives)
+        .set({
+          title: fieldData.name,
+          slug: fieldData.slug,
+          description: fieldData.description,
+          thumbnailUrl: fieldData['thumbnail-image-2']?.url,
+          mainImageUrl: fieldData['cover-image-2']?.url,
+          youtubeLink,
+          buttonText: fieldData['button-text-2'],
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          locationName: fieldData['location-name'],
+          googlePlaylistUrl: fieldData['playlist-link-2'],
+          updatedAt: now,
+        })
+        .where(eq(initiatives.webflowItemId, item.id));
+    } else {
+      initiativeId = crypto.randomUUID();
+      await db.insert(initiatives).values({
+        id: initiativeId,
+        webflowItemId: item.id,
+        title: fieldData.name,
+        slug: fieldData.slug,
+        description: fieldData.description,
+        thumbnailUrl: fieldData['thumbnail-image-2']?.url,
+        mainImageUrl: fieldData['cover-image-2']?.url,
+        youtubeLink,
+        buttonText: fieldData['button-text-2'],
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        locationName: fieldData['location-name'],
+        googlePlaylistUrl: fieldData['playlist-link-2'],
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    // Sync tags
+    const tagIds = fieldData['initiative-tags-2'] || [];
+    if (tagIds.length > 0) {
+      await syncInitiativeTagJunction(db, initiativeId, tagIds);
+    }
+
+    count++;
+  }
+
+  return count;
+}
+
+async function syncInitiativeTagJunction(db: DbClient, initiativeId: string, tagWebflowIds: string[]) {
+  await db.delete(initiativeTags).where(eq(initiativeTags.initiativeId, initiativeId));
+
+  for (const tagWebflowId of tagWebflowIds) {
+    const tag = await db
+      .select({ id: tags.id })
+      .from(tags)
+      .where(eq(tags.webflowItemId, tagWebflowId))
+      .get();
+
+    if (tag) {
+      await db.insert(initiativeTags).values({
+        initiativeId,
+        tagId: tag.id,
+      });
+    }
+  }
 }
