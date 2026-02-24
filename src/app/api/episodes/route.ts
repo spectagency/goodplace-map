@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  const collectionId = process.env.WEBFLOW_COLLECTION_ID;
+  const collectionId = process.env.WEBFLOW_STORIES_COLLECTION_ID;
   const token = process.env.WEBFLOW_SITE_API_TOKEN;
 
   try {

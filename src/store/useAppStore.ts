@@ -3,7 +3,7 @@ import type {
   AppStore,
   Podcast,
   Place,
-  Event,
+  Initiative,
   MapItem,
   Tag,
   MapBounds,
@@ -18,7 +18,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   // Initial state - Data
   podcasts: [],
   places: [],
-  events: [],
+  initiatives: [],
   tags: [],
   isLoading: true,
   error: null,
@@ -63,7 +63,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   setPlaces: (places: Place[]) => set({ places }),
 
-  setEvents: (events: Event[]) => set({ events }),
+  setInitiatives: (initiatives: Initiative[]) => set({ initiatives }),
 
   setTags: (tags: Tag[]) => set({ tags }),
 
@@ -187,12 +187,24 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   toggleContentTypeFilter: (type: ContentType) =>
     set((state) => {
-      const { activeContentTypeFilters } = state.listView;
-      const newFilters = activeContentTypeFilters.includes(type)
+      const { activeContentTypeFilters, activeTagFilters } = state.listView;
+      const newTypeFilters = activeContentTypeFilters.includes(type)
         ? activeContentTypeFilters.filter((t) => t !== type)
         : [...activeContentTypeFilters, type];
+
+      // Clear tag filters for content types that are now hidden
+      let newTagFilters = activeTagFilters;
+      if (newTypeFilters.length > 0 && activeTagFilters.length > 0) {
+        const visibleTagIds = new Set(
+          state.tags
+            .filter((tag) => !tag.contentType || newTypeFilters.includes(tag.contentType))
+            .map((tag) => tag.id)
+        );
+        newTagFilters = activeTagFilters.filter((id) => visibleTagIds.has(id));
+      }
+
       return {
-        listView: { ...state.listView, activeContentTypeFilters: newFilters },
+        listView: { ...state.listView, activeContentTypeFilters: newTypeFilters, activeTagFilters: newTagFilters },
       };
     }),
 
@@ -213,8 +225,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
 // Get all map items combined
 export const useAllMapItems = () => {
-  const { podcasts, places, events } = useAppStore();
-  return [...podcasts, ...places, ...events] as MapItem[];
+  const { podcasts, places, initiatives } = useAppStore();
+  return [...podcasts, ...places, ...initiatives] as MapItem[];
 };
 
 // Filter items by tags
@@ -233,10 +245,10 @@ const filterByContentType = (items: MapItem[], typeFilters: ContentType[]): MapI
 
 // Get filtered map items (by both tags and content type)
 export const useFilteredMapItems = () => {
-  const { podcasts, places, events, listView } = useAppStore();
+  const { podcasts, places, initiatives, listView } = useAppStore();
   const { activeTagFilters, activeContentTypeFilters } = listView;
 
-  let items: MapItem[] = [...podcasts, ...places, ...events];
+  let items: MapItem[] = [...podcasts, ...places, ...initiatives];
 
   // Filter by content type first
   items = filterByContentType(items, activeContentTypeFilters);
@@ -275,17 +287,17 @@ export const useFilteredPlaces = () => {
   );
 };
 
-// Get filtered events only
-export const useFilteredEvents = () => {
-  const { events, listView } = useAppStore();
+// Get filtered initiatives only
+export const useFilteredInitiatives = () => {
+  const { initiatives, listView } = useAppStore();
   const { activeTagFilters } = listView;
 
   if (activeTagFilters.length === 0) {
-    return events;
+    return initiatives;
   }
 
-  return events.filter((event) =>
-    event.tags.some((tag) => activeTagFilters.includes(tag.id))
+  return initiatives.filter((initiative) =>
+    initiative.tags.some((tag) => activeTagFilters.includes(tag.id))
   );
 };
 

@@ -27,12 +27,53 @@ export function mapTagIds(tagIds: string[], tagsMap: Map<string, Tag>): Tag[] {
 // Environment interface for Webflow API
 export interface WebflowEnv {
   WEBFLOW_SITE_API_TOKEN: string;
-  WEBFLOW_COLLECTION_ID: string;
-  WEBFLOW_TAGS_COLLECTION_ID?: string;
-  // Places collection
+  WEBFLOW_STORIES_COLLECTION_ID: string;
+  WEBFLOW_STORY_TAGS_COLLECTION_ID?: string;
   WEBFLOW_PLACES_COLLECTION_ID?: string;
-  // Events collection
-  WEBFLOW_EVENTS_COLLECTION_ID?: string;
+  WEBFLOW_PLACE_TAGS_COLLECTION_ID?: string;
+  WEBFLOW_INITIATIVES_COLLECTION_ID?: string;
+  WEBFLOW_INITIATIVE_TAGS_COLLECTION_ID?: string;
+}
+
+// Fetch tags from a Webflow collection
+export async function fetchTagsFromCollection(
+  token: string,
+  collectionId: string
+): Promise<Tag[]> {
+  if (!collectionId || !token) {
+    console.error('Missing Webflow tags configuration');
+    return [];
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.webflow.com/v2/collections/${collectionId}/items`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.error('Failed to fetch tags from Webflow:', response.statusText);
+      return [];
+    }
+
+    const data = (await response.json()) as {
+      items: { id: string; fieldData: { name: string; slug?: string } }[];
+    };
+    return data.items
+      .map((item) => ({
+        id: item.id,
+        name: item.fieldData.name,
+        slug: item.fieldData.slug || item.fieldData.name.toLowerCase().replace(/\s+/g, '-'),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  } catch (error) {
+    console.error('Error fetching tags from Webflow:', error);
+    return [];
+  }
 }
 
 // Generic Webflow API fetch function

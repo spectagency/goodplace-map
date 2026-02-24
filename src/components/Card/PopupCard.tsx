@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAppStore, useSelectedItem, useIsCardOpen } from '@/store/useAppStore';
 import { CloseButton, TagPill, Button, YouTubeIcon, Overlay } from '@/components/UI';
-import { isPodcast, isPlace, isEvent, CONTENT_TYPE_CONFIG } from '@/types';
-import type { MapItem, Podcast, Place, Event } from '@/types';
+import { isPodcast, isPlace, isInitiative, CONTENT_TYPE_CONFIG } from '@/types';
+
 
 // Card dimensions for pin positioning calculations
 export const CARD_MAX_HEIGHT_VH = 80;
@@ -212,10 +212,14 @@ export function PopupCard() {
 
   // Get type-specific values
   const typeConfig = CONTENT_TYPE_CONFIG[item.type];
-  // Get YouTube embed URL for podcasts and events
-  const youtubeEmbedUrl = (isPodcast(item) || isEvent(item)) && item.youtubeLink
+  // Get YouTube embed URL (all content types can have a YouTube link)
+  const youtubeEmbedUrl = item.youtubeLink
     ? getYouTubeEmbedUrl(item.youtubeLink)
     : null;
+  // Primary button text: CMS-customizable with per-type default
+  const primaryButtonText = item.buttonText || typeConfig.defaultButtonText;
+  // Card cover image: mainImageUrl takes priority, then thumbnailUrl as fallback
+  const cardImageUrl = item.mainImageUrl || item.thumbnailUrl;
 
   return (
     <>
@@ -241,16 +245,8 @@ export function PopupCard() {
             aria-modal="true"
             aria-labelledby="card-title"
           >
-            {/* Thumbnail/Video section - fixed at top */}
-            {item.thumbnailUrl ? (
-              <div className="relative w-full aspect-video bg-gray-100 flex-shrink-0 rounded-[8px] sm:rounded-[12px] overflow-hidden">
-                <img
-                  src={item.thumbnailUrl}
-                  alt={item.title}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            ) : youtubeEmbedUrl ? (
+            {/* Media section - YouTube embed takes priority, then cover image */}
+            {youtubeEmbedUrl ? (
               <div className="relative w-full aspect-video bg-gray-100 flex-shrink-0 rounded-[8px] sm:rounded-[12px] overflow-hidden">
                 <iframe
                   src={youtubeEmbedUrl}
@@ -258,6 +254,14 @@ export function PopupCard() {
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                   title={item.title}
+                />
+              </div>
+            ) : cardImageUrl ? (
+              <div className="relative w-full aspect-video bg-gray-100 flex-shrink-0 rounded-[8px] sm:rounded-[12px] overflow-hidden">
+                <img
+                  src={cardImageUrl}
+                  alt={item.title}
+                  className="w-full h-full object-cover"
                 />
               </div>
             ) : null}
@@ -293,7 +297,7 @@ export function PopupCard() {
                 </h2>
 
                 {/* Event date (for events) */}
-                {isEvent(item) && item.eventDate && (
+                {isInitiative(item) && item.eventDate && (
                   <p className="text-sm text-gray-600 mb-2 flex items-center gap-1.5">
                     <CalendarIcon />
                     {formatEventDate(item.eventDate)}
@@ -335,7 +339,7 @@ export function PopupCard() {
                   <div className="flex gap-2">
                     {item.spotifyLink && (
                       <Button href={item.spotifyLink} variant="spotify" className="flex-1">
-                        Listen on Spotify
+                        {primaryButtonText}
                       </Button>
                     )}
                     <Button
@@ -366,7 +370,7 @@ export function PopupCard() {
                   {item.websiteUrl && (
                     <Button href={item.websiteUrl} variant="spotify" className="flex-1">
                       <WebsiteIcon />
-                      Visit Website
+                      {primaryButtonText}
                     </Button>
                   )}
                   <Button
@@ -394,11 +398,11 @@ export function PopupCard() {
               )}
 
               {/* Event actions */}
-              {isEvent(item) && (
+              {isInitiative(item) && (
                 <div className="flex gap-2">
                   {item.playlistLink && (
                     <Button href={item.playlistLink} variant="spotify" className="flex-1">
-                      Watch Full Playlist
+                      {primaryButtonText}
                     </Button>
                   )}
                   <Button

@@ -35,8 +35,8 @@ async function fetchFromDatabase(env: { DB: D1Database }): Promise<Response> {
 async function fetchFromWebflow(env: WebflowEnv): Promise<Response> {
   const webflowEnv: WebflowEnv = {
     WEBFLOW_SITE_API_TOKEN: env.WEBFLOW_SITE_API_TOKEN,
-    WEBFLOW_COLLECTION_ID: env.WEBFLOW_COLLECTION_ID,
-    WEBFLOW_TAGS_COLLECTION_ID: env.WEBFLOW_TAGS_COLLECTION_ID,
+    WEBFLOW_STORIES_COLLECTION_ID: env.WEBFLOW_STORIES_COLLECTION_ID,
+    WEBFLOW_STORY_TAGS_COLLECTION_ID: env.WEBFLOW_STORY_TAGS_COLLECTION_ID,
   };
 
   const tagList = await getTagsFromWebflow(webflowEnv);

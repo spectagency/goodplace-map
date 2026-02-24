@@ -20,9 +20,11 @@ interface WebflowPodcastFieldData {
   name: string;
   slug?: string;
   'episode-description'?: string;
-  thumbnail?: { url: string };
+  'cover-image'?: { url: string };
+  'main-image'?: { url: string };
   'youtube-link'?: { url: string } | string;
   'spotify-link'?: string;
+  'button-text'?: string;
   'latitude-2'?: string | number;
   'longitude-2'?: string | number;
   'location-coordinates'?: string; // Combined format: "lat, lng"
@@ -42,8 +44,8 @@ export async function POST(request: Request) {
   // Cast env to include our custom variables
   const typedEnv = env as typeof env & {
     WEBFLOW_SITE_API_TOKEN: string;
-    WEBFLOW_COLLECTION_ID: string;
-    WEBFLOW_TAGS_COLLECTION_ID?: string;
+    WEBFLOW_STORIES_COLLECTION_ID: string;
+    WEBFLOW_STORY_TAGS_COLLECTION_ID?: string;
   };
 
   // Check for authorization (simple bearer token check)
@@ -58,13 +60,13 @@ export async function POST(request: Request) {
 
   try {
     // Fetch and sync tags first (podcasts reference tags)
-    const tagsCollectionId = typedEnv.WEBFLOW_TAGS_COLLECTION_ID;
+    const tagsCollectionId = typedEnv.WEBFLOW_STORY_TAGS_COLLECTION_ID;
     if (tagsCollectionId) {
       await syncTags(db, tagsCollectionId, expectedToken);
     }
 
     // Fetch and sync podcasts
-    const podcastsCollectionId = typedEnv.WEBFLOW_COLLECTION_ID;
+    const podcastsCollectionId = typedEnv.WEBFLOW_STORIES_COLLECTION_ID;
     if (podcastsCollectionId) {
       const count = await syncPodcasts(db, podcastsCollectionId, expectedToken);
       return Response.json({
@@ -220,8 +222,10 @@ async function syncPodcasts(
           title: fieldData.name,
           slug: fieldData.slug,
           description: fieldData['episode-description'],
-          thumbnailUrl: fieldData.thumbnail?.url,
+          thumbnailUrl: fieldData['cover-image']?.url,
+          mainImageUrl: fieldData['main-image']?.url,
           youtubeLink,
+          buttonText: fieldData['button-text'],
           spotifyLink: fieldData['spotify-link'],
           latitude,
           longitude,
@@ -239,8 +243,10 @@ async function syncPodcasts(
         title: fieldData.name,
         slug: fieldData.slug,
         description: fieldData['episode-description'],
-        thumbnailUrl: fieldData.thumbnail?.url,
+        thumbnailUrl: fieldData['cover-image']?.url,
+        mainImageUrl: fieldData['main-image']?.url,
         youtubeLink,
+        buttonText: fieldData['button-text'],
         spotifyLink: fieldData['spotify-link'],
         latitude,
         longitude,

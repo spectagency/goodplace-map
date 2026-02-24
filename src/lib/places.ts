@@ -1,5 +1,5 @@
 import type { Place, Tag } from '@/types';
-import { parseCoordinates, type WebflowEnv } from './shared';
+import { parseCoordinates, fetchTagsFromCollection, type WebflowEnv } from './shared';
 
 interface WebflowPlace {
   id: string;
@@ -10,7 +10,10 @@ interface WebflowPlace {
     description?: string;
     'location-name'?: string;
     image?: { url: string };
+    'cover-image'?: { url: string };
+    'youtube-link'?: { url: string } | string;
     'website-link'?: string;
+    'button-text'?: string;
     tags?: string[];
   };
 }
@@ -35,6 +38,12 @@ function transformPlace(
     .map((tagId: string) => tagsMap.get(tagId))
     .filter((tag): tag is Tag => tag !== undefined);
 
+  // Parse YouTube link (handles both string and object formats)
+  const youtubeLink =
+    typeof item.fieldData['youtube-link'] === 'object'
+      ? item.fieldData['youtube-link']?.url
+      : item.fieldData['youtube-link'];
+
   return {
     id: item.id,
     webflowItemId: item.id,
@@ -43,6 +52,9 @@ function transformPlace(
     slug: item.fieldData.slug || null,
     description: item.fieldData.description || null,
     thumbnailUrl: item.fieldData.image?.url || null,
+    mainImageUrl: item.fieldData['cover-image']?.url || null,
+    youtubeLink: youtubeLink || null,
+    buttonText: item.fieldData['button-text'] || null,
     latitude: coords.latitude,
     longitude: coords.longitude,
     locationName: item.fieldData['location-name'] || null,
@@ -53,6 +65,13 @@ function transformPlace(
     updatedAt: null,
     tags: placeTags,
   };
+}
+
+export async function getPlaceTagsFromWebflow(env: WebflowEnv): Promise<Tag[]> {
+  return fetchTagsFromCollection(
+    env.WEBFLOW_SITE_API_TOKEN,
+    env.WEBFLOW_PLACE_TAGS_COLLECTION_ID || ''
+  );
 }
 
 export async function getPlacesFromWebflow(
@@ -122,9 +141,9 @@ export async function getPlaceBySlug(
 export async function getPlaces(tags: Tag[]): Promise<Place[]> {
   const env: WebflowEnv = {
     WEBFLOW_SITE_API_TOKEN: process.env.WEBFLOW_SITE_API_TOKEN || '',
-    WEBFLOW_COLLECTION_ID: process.env.WEBFLOW_COLLECTION_ID || '',
-    WEBFLOW_TAGS_COLLECTION_ID: process.env.WEBFLOW_TAGS_COLLECTION_ID,
+    WEBFLOW_STORIES_COLLECTION_ID: process.env.WEBFLOW_STORIES_COLLECTION_ID || '',
     WEBFLOW_PLACES_COLLECTION_ID: process.env.WEBFLOW_PLACES_COLLECTION_ID,
+    WEBFLOW_PLACE_TAGS_COLLECTION_ID: process.env.WEBFLOW_PLACE_TAGS_COLLECTION_ID,
   };
   return getPlacesFromWebflow(env, tags);
 }

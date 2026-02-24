@@ -1,5 +1,5 @@
 import type { Podcast, Tag } from '@/types';
-import { parseCoordinates, type WebflowEnv } from './shared';
+import { parseCoordinates, fetchTagsFromCollection, type WebflowEnv } from './shared';
 
 // Re-export for backward compatibility
 export type { WebflowEnv } from './shared';
@@ -15,8 +15,10 @@ interface WebflowEpisode {
     'episode-description'?: string;
     'location-name'?: string;
     'spotify-link'?: string;
-    thumbnail?: { url: string };
+    'cover-image'?: { url: string };
+    'main-image'?: { url: string };
     'youtube-link'?: { url: string } | string;
+    'button-text'?: string;
     'published-date'?: string;
     'episode-tags'?: string[];
   };
@@ -75,8 +77,10 @@ function transformEpisode(
     title: episode.fieldData.name,
     slug: episode.fieldData.slug || null,
     description: episode.fieldData['episode-description'] || null,
-    thumbnailUrl: episode.fieldData.thumbnail?.url || null,
+    thumbnailUrl: episode.fieldData['cover-image']?.url || null,
+    mainImageUrl: episode.fieldData['main-image']?.url || null,
     youtubeLink: youtubeLink || null,
+    buttonText: episode.fieldData['button-text'] || null,
     spotifyLink: episode.fieldData['spotify-link'] || null,
     latitude,
     longitude,
@@ -88,52 +92,22 @@ function transformEpisode(
   };
 }
 
-export async function getTagsFromWebflow(env: WebflowEnv): Promise<Tag[]> {
-  const collectionId = env.WEBFLOW_TAGS_COLLECTION_ID;
-  const token = env.WEBFLOW_SITE_API_TOKEN;
-
-  if (!collectionId || !token) {
-    console.error('Missing Webflow tags configuration');
-    return [];
-  }
-
-  try {
-    const response = await fetch(
-      `https://api.webflow.com/v2/collections/${collectionId}/items`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-    if (!response.ok) {
-      console.error('Failed to fetch tags from Webflow:', response.statusText);
-      return [];
-    }
-
-    const data = (await response.json()) as { items: WebflowTag[] };
-    return data.items
-      .map((item) => ({
-        id: item.id,
-        name: item.fieldData.name,
-        slug: item.fieldData.slug || item.fieldData.name.toLowerCase().replace(/\s+/g, '-'),
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  } catch (error) {
-    console.error('Error fetching tags from Webflow:', error);
-    return [];
-  }
+export async function getStoryTagsFromWebflow(env: WebflowEnv): Promise<Tag[]> {
+  return fetchTagsFromCollection(
+    env.WEBFLOW_SITE_API_TOKEN,
+    env.WEBFLOW_STORY_TAGS_COLLECTION_ID || ''
+  );
 }
+
+// Re-export for backward compatibility
+export const getTagsFromWebflow = getStoryTagsFromWebflow;
 
 // Legacy function for backwards compatibility
 export async function getTags(): Promise<Tag[]> {
-  const env: WebflowEnv = {
-    WEBFLOW_SITE_API_TOKEN: process.env.WEBFLOW_SITE_API_TOKEN || '',
-    WEBFLOW_COLLECTION_ID: process.env.WEBFLOW_COLLECTION_ID || '',
-    WEBFLOW_TAGS_COLLECTION_ID: process.env.WEBFLOW_TAGS_COLLECTION_ID,
-  };
-  return getTagsFromWebflow(env);
+  return fetchTagsFromCollection(
+    process.env.WEBFLOW_SITE_API_TOKEN || '',
+    process.env.WEBFLOW_STORY_TAGS_COLLECTION_ID || ''
+  );
 }
 
 export async function getPodcastsFromWebflow(
@@ -141,7 +115,7 @@ export async function getPodcastsFromWebflow(
   tags: Tag[],
   filterTagIds?: string[]
 ): Promise<Podcast[]> {
-  const collectionId = env.WEBFLOW_COLLECTION_ID;
+  const collectionId = env.WEBFLOW_STORIES_COLLECTION_ID;
   const token = env.WEBFLOW_SITE_API_TOKEN;
 
   if (!collectionId || !token) {
@@ -199,8 +173,8 @@ export async function getPodcastsFromWebflow(
 export async function getPodcasts(tags: Tag[]): Promise<Podcast[]> {
   const env: WebflowEnv = {
     WEBFLOW_SITE_API_TOKEN: process.env.WEBFLOW_SITE_API_TOKEN || '',
-    WEBFLOW_COLLECTION_ID: process.env.WEBFLOW_COLLECTION_ID || '',
-    WEBFLOW_TAGS_COLLECTION_ID: process.env.WEBFLOW_TAGS_COLLECTION_ID,
+    WEBFLOW_STORIES_COLLECTION_ID: process.env.WEBFLOW_STORIES_COLLECTION_ID || '',
+    WEBFLOW_STORY_TAGS_COLLECTION_ID: process.env.WEBFLOW_STORY_TAGS_COLLECTION_ID,
   };
   return getPodcastsFromWebflow(env, tags);
 }

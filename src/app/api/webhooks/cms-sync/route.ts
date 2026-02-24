@@ -15,9 +15,11 @@ interface WebflowFieldData {
   name: string;
   slug?: string;
   'episode-description'?: string;
-  thumbnail?: { url: string };
+  'cover-image'?: { url: string };
+  'main-image'?: { url: string };
   'youtube-link'?: { url: string } | string;
   'spotify-link'?: string;
+  'button-text'?: string;
   'latitude-2'?: string | number;
   'longitude-2'?: string | number;
   'location-name'?: string;
@@ -137,8 +139,10 @@ async function upsertPodcast(db: ReturnType<typeof getDb>, payload: WebflowWebho
         title: fieldData.name,
         slug: fieldData.slug,
         description: fieldData['episode-description'],
-        thumbnailUrl: fieldData.thumbnail?.url,
+        thumbnailUrl: fieldData['cover-image']?.url,
+        mainImageUrl: fieldData['main-image']?.url,
         youtubeLink,
+        buttonText: fieldData['button-text'],
         spotifyLink: fieldData['spotify-link'],
         latitude,
         longitude,
@@ -161,8 +165,10 @@ async function upsertPodcast(db: ReturnType<typeof getDb>, payload: WebflowWebho
       title: fieldData.name,
       slug: fieldData.slug,
       description: fieldData['episode-description'],
-      thumbnailUrl: fieldData.thumbnail?.url,
+      thumbnailUrl: fieldData['cover-image']?.url,
+      mainImageUrl: fieldData['main-image']?.url,
       youtubeLink,
+      buttonText: fieldData['button-text'],
       spotifyLink: fieldData['spotify-link'],
       latitude,
       longitude,

@@ -18,7 +18,7 @@ import {
   usePendingInitialItem,
   usePendingNotFoundMessage,
 } from '@/store/useAppStore';
-import type { MapItem, Podcast, Place, Event as GoodEvent } from '@/types';
+import type { MapItem, Podcast, Place, Initiative } from '@/types';
 import { CONTENT_TYPE_CONFIG } from '@/types';
 import { ListViewToggle, ContentTypeToggle } from './MapControls';
 
@@ -35,7 +35,7 @@ const CLUSTER_LAYER_IDS = {
 interface MapContainerProps {
   initialPodcasts?: Podcast[];
   initialPlaces?: Place[];
-  initialEvents?: GoodEvent[];
+  initialInitiatives?: Initiative[];
 }
 
 // CARTO basemap styles (uses OpenStreetMap data with cleaner styling)
@@ -68,9 +68,9 @@ const layersToHide = [
 export function MapContainer({
   initialPodcasts = [],
   initialPlaces = [],
-  initialEvents = [],
+  initialInitiatives = [],
 }: MapContainerProps) {
-  const { setPodcasts, setPlaces, setEvents, openCard } = useAppStore();
+  const { setPodcasts, setPlaces, setInitiatives, openCard } = useAppStore();
   const filteredItems = useFilteredMapItems();
   const isCardOpen = useIsCardOpen();
   const [{ initialZoom, minZoom }] = useState(getBreakpointZoom);
@@ -80,7 +80,7 @@ export function MapContainer({
   const navigateToItem = useCallback((type: string | undefined, slug: string) => {
     const tryNavigate = () => {
       const state = useAppStore.getState();
-      const allItems = [...state.podcasts, ...state.places, ...state.events];
+      const allItems = [...state.podcasts, ...state.places, ...state.initiatives];
       if (allItems.length === 0) return false;
 
       const item = allItems.find(
@@ -143,10 +143,10 @@ export function MapContainer({
     if (initialPlaces.length > 0) {
       setPlaces(initialPlaces);
     }
-    if (initialEvents.length > 0) {
-      setEvents(initialEvents);
+    if (initialInitiatives.length > 0) {
+      setInitiatives(initialInitiatives);
     }
-  }, [initialPodcasts, initialPlaces, initialEvents, setPodcasts, setPlaces, setEvents]);
+  }, [initialPodcasts, initialPlaces, initialInitiatives, setPodcasts, setPlaces, setInitiatives]);
 
   // Convert all items to GeoJSON FeatureCollection for clustering
   const geoJsonData = useMemo(() => {
@@ -332,7 +332,7 @@ function CustomClusterMarkers({
     id: number;
     coordinates: [number, number];
     pointCount: number;
-    contentTypes: { podcast: number; place: number; event: number };
+    contentTypes: { podcast: number; place: number; initiative: number };
   }>>([]);
   const isCardOpen = useIsCardOpen();
 
@@ -377,7 +377,7 @@ function CustomClusterMarkers({
           const leaves = await source.getClusterLeaves(clusterId, pointCount, 0);
 
           // Count content types
-          const contentTypes = { podcast: 0, place: 0, event: 0 };
+          const contentTypes = { podcast: 0, place: 0, initiative: 0 };
           for (const leaf of leaves) {
             const type = leaf.properties?.type as keyof typeof contentTypes;
             if (type in contentTypes) {
@@ -449,7 +449,7 @@ function SplitColorCluster({
 }: {
   coordinates: [number, number];
   pointCount: number;
-  contentTypes: { podcast: number; place: number; event: number };
+  contentTypes: { podcast: number; place: number; initiative: number };
   onClick: () => void;
 }) {
   // Determine cluster size based on point count (larger sizes)

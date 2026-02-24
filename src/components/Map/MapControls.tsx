@@ -59,7 +59,7 @@ export function ListViewToggle() {
   );
 }
 
-const CONTENT_TYPES: ContentType[] = ['podcast', 'place', 'event'];
+const CONTENT_TYPES: ContentType[] = ['podcast', 'place', 'initiative'];
 
 export function ContentTypeToggle() {
   const activeContentTypeFilters = useActiveContentTypeFilters();

@@ -1,5 +1,5 @@
 // Content type discriminator
-export type ContentType = 'podcast' | 'place' | 'event';
+export type ContentType = 'podcast' | 'place' | 'initiative';
 
 // Content type configuration (for UI)
 export const CONTENT_TYPE_CONFIG: Record<ContentType, {
@@ -7,24 +7,28 @@ export const CONTENT_TYPE_CONFIG: Record<ContentType, {
   pluralLabel: string;
   pinColor: string;
   sharePathPrefix: string;
+  defaultButtonText: string;
 }> = {
   podcast: {
     label: 'Story',
     pluralLabel: 'Stories',
     pinColor: '#60977F', // Green
     sharePathPrefix: 'stories',
+    defaultButtonText: 'Listen on Spotify',
   },
   place: {
     label: 'Place',
     pluralLabel: 'Places',
     pinColor: '#cd7653', // Terracotta
     sharePathPrefix: 'places',
+    defaultButtonText: 'Visit Website',
   },
-  event: {
-    label: 'Project',
-    pluralLabel: 'Projects',
+  initiative: {
+    label: 'Initiative',
+    pluralLabel: 'Initiatives',
     pinColor: '#e0b259', // Gold
-    sharePathPrefix: 'projects',
+    sharePathPrefix: 'initiatives',
+    defaultButtonText: 'Watch Full Playlist',
   },
 };
 
@@ -33,6 +37,7 @@ export interface Tag {
   id: string;
   name: string;
   slug: string | null;
+  contentType?: ContentType; // Which content type collection this tag belongs to
 }
 
 // Base interface for all map items
@@ -44,6 +49,9 @@ export interface MapItemBase {
   slug: string | null;
   description: string | null;
   thumbnailUrl: string | null;
+  mainImageUrl: string | null;
+  youtubeLink: string | null;
+  buttonText: string | null;
   latitude: number;
   longitude: number;
   locationName: string | null;
@@ -55,7 +63,6 @@ export interface MapItemBase {
 // Podcast - episodes with audio/video content
 export interface Podcast extends MapItemBase {
   type: 'podcast';
-  youtubeLink: string | null;
   spotifyLink: string | null;
   publishedAt: string | null;
 }
@@ -68,17 +75,16 @@ export interface Place extends MapItemBase {
   openingHours: string | null;
 }
 
-// Event - past events with video and playlist
-export interface Event extends MapItemBase {
-  type: 'event';
+// Initiative - past initiatives/projects with video and playlist
+export interface Initiative extends MapItemBase {
+  type: 'initiative';
   eventDate: string | null;
   endDate: string | null;
-  youtubeLink: string | null; // Video embed link
   playlistLink: string | null; // YouTube playlist link
 }
 
 // Union type for any map item
-export type MapItem = Podcast | Place | Event;
+export type MapItem = Podcast | Place | Initiative;
 
 // Type guard functions
 export function isPodcast(item: MapItem): item is Podcast {
@@ -89,8 +95,8 @@ export function isPlace(item: MapItem): item is Place {
   return item.type === 'place';
 }
 
-export function isEvent(item: MapItem): item is Event {
-  return item.type === 'event';
+export function isInitiative(item: MapItem): item is Initiative {
+  return item.type === 'initiative';
 }
 
 // Map types
@@ -137,7 +143,7 @@ export interface AppState {
   // Data - separate arrays for each content type
   podcasts: Podcast[];
   places: Place[];
-  events: Event[];
+  initiatives: Initiative[];
   tags: Tag[];
   isLoading: boolean;
   error: string | null;
@@ -163,7 +169,7 @@ export interface AppActions {
   // Data actions
   setPodcasts: (podcasts: Podcast[]) => void;
   setPlaces: (places: Place[]) => void;
-  setEvents: (events: Event[]) => void;
+  setInitiatives: (initiatives: Initiative[]) => void;
   setTags: (tags: Tag[]) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
