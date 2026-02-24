@@ -3,9 +3,7 @@ import { PopupCard } from '@/components/Card';
 import { ListViewModal } from '@/components/ListView';
 import { StoreInitializer } from '@/components/StoreInitializer';
 import { NotFoundToast } from '@/components/UI';
-import { getTags, getPodcasts } from '@/lib/podcasts';
-import { getPlaceTagsFromWebflow, getPlaces } from '@/lib/places';
-import { getInitiativeTagsFromWebflow, getInitiatives } from '@/lib/initiatives';
+import { getAllTags, getAllStories, getAllPlaces, getAllInitiatives } from '@/lib/data';
 import type { Tag } from '@/types';
 import type { WebflowEnv } from '@/lib/shared';
 
@@ -24,18 +22,14 @@ function getEnv(): WebflowEnv {
 export default async function Home() {
   const env = getEnv();
 
-  // Fetch tags per content type in parallel
-  const [storyTags, placeTags, initiativeTags] = await Promise.all([
-    getTags(),
-    getPlaceTagsFromWebflow(env),
-    getInitiativeTagsFromWebflow(env),
-  ]);
+  // Fetch tags (DB first, Webflow API fallback)
+  const { storyTags, placeTags, initiativeTags } = await getAllTags(env);
 
-  // Fetch all content types with their own tags
+  // Fetch all content types (DB first, Webflow API fallback)
   const [podcasts, places, initiatives] = await Promise.all([
-    getPodcasts(storyTags),
-    getPlaces(placeTags),
-    getInitiatives(initiativeTags),
+    getAllStories(env, storyTags),
+    getAllPlaces(env, placeTags),
+    getAllInitiatives(env, initiativeTags),
   ]);
 
   // Merge all tags for the filter UI, annotated with their content type
