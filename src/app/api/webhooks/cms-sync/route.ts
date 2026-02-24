@@ -1,9 +1,9 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import {
   getDb,
-  podcasts,
+  stories,
   tags,
-  podcastTags,
+  storyTags,
   places,
   placeTags,
   initiatives,
@@ -170,7 +170,7 @@ export async function POST(request: Request) {
   // Build a map of collection IDs to content types
   const collectionMap = new Map<string, string>();
   if (typedEnv.WEBFLOW_STORIES_COLLECTION_ID) {
-    collectionMap.set(typedEnv.WEBFLOW_STORIES_COLLECTION_ID, 'podcast');
+    collectionMap.set(typedEnv.WEBFLOW_STORIES_COLLECTION_ID, 'story');
   }
   if (typedEnv.WEBFLOW_PLACES_COLLECTION_ID) {
     collectionMap.set(typedEnv.WEBFLOW_PLACES_COLLECTION_ID, 'place');
@@ -204,11 +204,11 @@ export async function POST(request: Request) {
       } else {
         await upsertTag(db, payload);
       }
-    } else if (contentType === 'podcast') {
+    } else if (contentType === 'story') {
       if (isDelete) {
-        await deletePodcast(db, payload.id);
+        await deleteStory(db, payload.id);
       } else {
-        await upsertPodcast(db, payload);
+        await upsertStory(db, payload);
       }
     } else if (contentType === 'place') {
       if (isDelete) {
@@ -315,15 +315,15 @@ async function deleteTag(db: DbClient, webflowItemId: string) {
 }
 
 // ============================================
-// Podcast upsert/delete
+// Story upsert/delete
 // ============================================
 
-async function upsertPodcast(db: DbClient, payload: WebflowWebhookPayload['payload']) {
+async function upsertStory(db: DbClient, payload: WebflowWebhookPayload['payload']) {
   const fieldData = payload.fieldData as unknown as PodcastFieldData;
 
   const coords = parseCoordinates(payload.fieldData);
   if (!coords) {
-    console.log('Skipping podcast without valid coordinates:', payload.id);
+    console.log('Skipping story without valid coordinates:', payload.id);
     return;
   }
 
@@ -331,17 +331,17 @@ async function upsertPodcast(db: DbClient, payload: WebflowWebhookPayload['paylo
   const now = new Date().toISOString();
 
   const existing = await db
-    .select({ id: podcasts.id })
-    .from(podcasts)
-    .where(eq(podcasts.webflowItemId, payload.id))
+    .select({ id: stories.id })
+    .from(stories)
+    .where(eq(stories.webflowItemId, payload.id))
     .get();
 
-  let podcastId: string;
+  let storyId: string;
 
   if (existing) {
-    podcastId = existing.id;
+    storyId = existing.id;
     await db
-      .update(podcasts)
+      .update(stories)
       .set({
         title: fieldData.name,
         slug: fieldData.slug,
@@ -357,11 +357,11 @@ async function upsertPodcast(db: DbClient, payload: WebflowWebhookPayload['paylo
         publishedAt: fieldData['published-date'],
         updatedAt: now,
       })
-      .where(eq(podcasts.webflowItemId, payload.id));
+      .where(eq(stories.webflowItemId, payload.id));
   } else {
-    podcastId = crypto.randomUUID();
-    await db.insert(podcasts).values({
-      id: podcastId,
+    storyId = crypto.randomUUID();
+    await db.insert(stories).values({
+      id: storyId,
       webflowItemId: payload.id,
       title: fieldData.name,
       slug: fieldData.slug,
@@ -382,24 +382,24 @@ async function upsertPodcast(db: DbClient, payload: WebflowWebhookPayload['paylo
 
   // Sync tags
   const tagIds = fieldData['episode-tags'] || [];
-  await syncPodcastTagJunction(db, podcastId, tagIds);
+  await syncStoryTagJunction(db, storyId, tagIds);
 }
 
-async function deletePodcast(db: DbClient, webflowItemId: string) {
+async function deleteStory(db: DbClient, webflowItemId: string) {
   const existing = await db
-    .select({ id: podcasts.id })
-    .from(podcasts)
-    .where(eq(podcasts.webflowItemId, webflowItemId))
+    .select({ id: stories.id })
+    .from(stories)
+    .where(eq(stories.webflowItemId, webflowItemId))
     .get();
 
   if (existing) {
-    await db.delete(podcastTags).where(eq(podcastTags.podcastId, existing.id));
-    await db.delete(podcasts).where(eq(podcasts.id, existing.id));
+    await db.delete(storyTags).where(eq(storyTags.storyId, existing.id));
+    await db.delete(stories).where(eq(stories.id, existing.id));
   }
 }
 
-async function syncPodcastTagJunction(db: DbClient, podcastId: string, tagWebflowIds: string[]) {
-  await db.delete(podcastTags).where(eq(podcastTags.podcastId, podcastId));
+async function syncStoryTagJunction(db: DbClient, storyId: string, tagWebflowIds: string[]) {
+  await db.delete(storyTags).where(eq(storyTags.storyId, storyId));
 
   for (const tagWebflowId of tagWebflowIds) {
     const tag = await db
@@ -409,7 +409,7 @@ async function syncPodcastTagJunction(db: DbClient, podcastId: string, tagWebflo
       .get();
 
     if (tag) {
-      await db.insert(podcastTags).values({ podcastId, tagId: tag.id });
+      await db.insert(storyTags).values({ storyId, tagId: tag.id });
     }
   }
 }

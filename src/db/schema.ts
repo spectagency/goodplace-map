@@ -1,9 +1,9 @@
 import { sqliteTable, text, real, primaryKey, index } from 'drizzle-orm/sqlite-core';
 
 // ============================================
-// PODCASTS
+// STORIES (podcasts/episodes)
 // ============================================
-export const podcasts = sqliteTable('podcasts', {
+export const stories = sqliteTable('stories', {
   id: text('id').primaryKey(),
   webflowItemId: text('webflow_item_id').unique().notNull(),
   title: text('title').notNull(),
@@ -21,17 +21,21 @@ export const podcasts = sqliteTable('podcasts', {
   createdAt: text('created_at'),
   updatedAt: text('updated_at'),
 }, (table) => [
-  index('idx_podcasts_coordinates').on(table.latitude, table.longitude),
+  index('idx_stories_coordinates').on(table.latitude, table.longitude),
 ]);
 
-export const podcastTags = sqliteTable('podcast_tags', {
-  podcastId: text('podcast_id').notNull().references(() => podcasts.id, { onDelete: 'cascade' }),
+export const storyTags = sqliteTable('story_tags', {
+  storyId: text('story_id').notNull().references(() => stories.id, { onDelete: 'cascade' }),
   tagId: text('tag_id').notNull().references(() => tags.id, { onDelete: 'cascade' }),
 }, (table) => [
-  primaryKey({ columns: [table.podcastId, table.tagId] }),
-  index('idx_podcast_tags_tag_id').on(table.tagId),
-  index('idx_podcast_tags_podcast_id').on(table.podcastId),
+  primaryKey({ columns: [table.storyId, table.tagId] }),
+  index('idx_story_tags_tag_id').on(table.tagId),
+  index('idx_story_tags_story_id').on(table.storyId),
 ]);
+
+// Backward-compatible aliases
+export const podcasts = stories;
+export const podcastTags = storyTags;
 
 // ============================================
 // PLACES (Good Places - cafes, venues, etc.)
@@ -70,7 +74,7 @@ export const placeTags = sqliteTable('place_tags', {
 // ============================================
 // INITIATIVES (Good Initiatives - with Google Playlist)
 // ============================================
-export const initiatives = sqliteTable('events', {
+export const initiatives = sqliteTable('initiatives', {
   id: text('id').primaryKey(),
   webflowItemId: text('webflow_item_id').unique().notNull(),
   title: text('title').notNull(),
@@ -90,17 +94,17 @@ export const initiatives = sqliteTable('events', {
   createdAt: text('created_at'),
   updatedAt: text('updated_at'),
 }, (table) => [
-  index('idx_events_coordinates').on(table.latitude, table.longitude),
-  index('idx_events_date').on(table.eventDate),
+  index('idx_initiatives_coordinates').on(table.latitude, table.longitude),
+  index('idx_initiatives_date').on(table.eventDate),
 ]);
 
-export const initiativeTags = sqliteTable('event_tags', {
-  initiativeId: text('event_id').notNull().references(() => initiatives.id, { onDelete: 'cascade' }),
+export const initiativeTags = sqliteTable('initiative_tags', {
+  initiativeId: text('initiative_id').notNull().references(() => initiatives.id, { onDelete: 'cascade' }),
   tagId: text('tag_id').notNull().references(() => tags.id, { onDelete: 'cascade' }),
 }, (table) => [
   primaryKey({ columns: [table.initiativeId, table.tagId] }),
-  index('idx_event_tags_tag_id').on(table.tagId),
-  index('idx_event_tags_event_id').on(table.initiativeId),
+  index('idx_initiative_tags_tag_id').on(table.tagId),
+  index('idx_initiative_tags_initiative_id').on(table.initiativeId),
 ]);
 
 // ============================================
@@ -116,8 +120,10 @@ export const tags = sqliteTable('tags', {
 // ============================================
 // Type exports
 // ============================================
-export type DbPodcast = typeof podcasts.$inferSelect;
-export type NewPodcast = typeof podcasts.$inferInsert;
+export type DbStory = typeof stories.$inferSelect;
+export type NewStory = typeof stories.$inferInsert;
+export type DbPodcast = DbStory;
+export type NewPodcast = NewStory;
 export type DbPlace = typeof places.$inferSelect;
 export type NewPlace = typeof places.$inferInsert;
 export type DbInitiative = typeof initiatives.$inferSelect;

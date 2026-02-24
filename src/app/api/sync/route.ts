@@ -1,9 +1,9 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import {
   getDb,
-  podcasts,
+  stories,
   tags,
-  podcastTags,
+  storyTags,
   places,
   placeTags,
   initiatives,
@@ -129,7 +129,7 @@ export async function POST(request: Request) {
 
     // Sync all content types
     if (typedEnv.WEBFLOW_STORIES_COLLECTION_ID) {
-      results.podcasts = await syncPodcasts(db, typedEnv.WEBFLOW_STORIES_COLLECTION_ID, expectedToken);
+      results.stories = await syncStories(db, typedEnv.WEBFLOW_STORIES_COLLECTION_ID, expectedToken);
     }
     if (typedEnv.WEBFLOW_PLACES_COLLECTION_ID) {
       results.places = await syncPlaces(db, typedEnv.WEBFLOW_PLACES_COLLECTION_ID, expectedToken);
@@ -266,10 +266,10 @@ async function syncTagsFromCollection(
 }
 
 // ============================================
-// Podcasts sync
+// Stories sync
 // ============================================
 
-async function syncPodcasts(
+async function syncStories(
   db: DbClient,
   collectionId: string,
   token: string
@@ -283,24 +283,24 @@ async function syncPodcasts(
 
     const coords = parseCoordinates(item.fieldData);
     if (!coords) {
-      console.log('Skipping podcast without valid coordinates:', item.id);
+      console.log('Skipping story without valid coordinates:', item.id);
       continue;
     }
 
     const youtubeLink = parseYoutubeLink(fieldData['youtube-link']);
 
     const existing = await db
-      .select({ id: podcasts.id })
-      .from(podcasts)
-      .where(eq(podcasts.webflowItemId, item.id))
+      .select({ id: stories.id })
+      .from(stories)
+      .where(eq(stories.webflowItemId, item.id))
       .get();
 
-    let podcastId: string;
+    let storyId: string;
 
     if (existing) {
-      podcastId = existing.id;
+      storyId = existing.id;
       await db
-        .update(podcasts)
+        .update(stories)
         .set({
           title: fieldData.name,
           slug: fieldData.slug,
@@ -316,11 +316,11 @@ async function syncPodcasts(
           publishedAt: fieldData['published-date'],
           updatedAt: now,
         })
-        .where(eq(podcasts.webflowItemId, item.id));
+        .where(eq(stories.webflowItemId, item.id));
     } else {
-      podcastId = crypto.randomUUID();
-      await db.insert(podcasts).values({
-        id: podcastId,
+      storyId = crypto.randomUUID();
+      await db.insert(stories).values({
+        id: storyId,
         webflowItemId: item.id,
         title: fieldData.name,
         slug: fieldData.slug,
@@ -342,7 +342,7 @@ async function syncPodcasts(
     // Sync tags
     const tagIds = fieldData['episode-tags'] || [];
     if (tagIds.length > 0) {
-      await syncPodcastTagJunction(db, podcastId, tagIds);
+      await syncStoryTagJunction(db, storyId, tagIds);
     }
 
     count++;
@@ -351,8 +351,8 @@ async function syncPodcasts(
   return count;
 }
 
-async function syncPodcastTagJunction(db: DbClient, podcastId: string, tagWebflowIds: string[]) {
-  await db.delete(podcastTags).where(eq(podcastTags.podcastId, podcastId));
+async function syncStoryTagJunction(db: DbClient, storyId: string, tagWebflowIds: string[]) {
+  await db.delete(storyTags).where(eq(storyTags.storyId, storyId));
 
   for (const tagWebflowId of tagWebflowIds) {
     const tag = await db
@@ -362,8 +362,8 @@ async function syncPodcastTagJunction(db: DbClient, podcastId: string, tagWebflo
       .get();
 
     if (tag) {
-      await db.insert(podcastTags).values({
-        podcastId,
+      await db.insert(storyTags).values({
+        storyId,
         tagId: tag.id,
       });
     }

@@ -1,5 +1,5 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare';
-import { getDb, podcasts, tags, podcastTags } from '@/db';
+import { getDb, stories, tags, storyTags } from '@/db';
 import { desc, eq, inArray } from 'drizzle-orm';
 import {
   getTagsFromWebflow,
@@ -35,56 +35,56 @@ async function fetchFromDatabase(
 ): Promise<Response> {
   const db = getDb(env.DB);
 
-  let podcastList;
+  let storyList;
 
   if (tagIds.length > 0) {
-    // Filter by tags - get podcast IDs that have any of the specified tags
-    const podcastIdsWithTags = await db
-      .selectDistinct({ podcastId: podcastTags.podcastId })
-      .from(podcastTags)
-      .where(inArray(podcastTags.tagId, tagIds));
+    // Filter by tags - get story IDs that have any of the specified tags
+    const storyIdsWithTags = await db
+      .selectDistinct({ storyId: storyTags.storyId })
+      .from(storyTags)
+      .where(inArray(storyTags.tagId, tagIds));
 
-    const podcastIds = podcastIdsWithTags.map((p) => p.podcastId);
+    const storyIds = storyIdsWithTags.map((s) => s.storyId);
 
-    if (podcastIds.length === 0) {
+    if (storyIds.length === 0) {
       return Response.json([]);
     }
 
-    podcastList = await db
+    storyList = await db
       .select()
-      .from(podcasts)
-      .where(inArray(podcasts.id, podcastIds))
-      .orderBy(desc(podcasts.publishedAt));
+      .from(stories)
+      .where(inArray(stories.id, storyIds))
+      .orderBy(desc(stories.publishedAt));
   } else {
-    // No filter - get all podcasts
-    podcastList = await db
+    // No filter - get all stories
+    storyList = await db
       .select()
-      .from(podcasts)
-      .orderBy(desc(podcasts.publishedAt));
+      .from(stories)
+      .orderBy(desc(stories.publishedAt));
   }
 
-  // Fetch tags for each podcast
-  const podcastsWithTags = await Promise.all(
-    podcastList.map(async (podcast) => {
-      const podcastTagList = await db
+  // Fetch tags for each story
+  const storiesWithTags = await Promise.all(
+    storyList.map(async (story) => {
+      const storyTagList = await db
         .select({
           id: tags.id,
           name: tags.name,
           slug: tags.slug,
         })
         .from(tags)
-        .innerJoin(podcastTags, eq(tags.id, podcastTags.tagId))
-        .where(eq(podcastTags.podcastId, podcast.id));
+        .innerJoin(storyTags, eq(tags.id, storyTags.tagId))
+        .where(eq(storyTags.storyId, story.id));
 
       return {
-        ...podcast,
+        ...story,
         type: 'podcast' as const,
-        tags: podcastTagList,
+        tags: storyTagList,
       };
     })
   );
 
-  return Response.json(podcastsWithTags);
+  return Response.json(storiesWithTags);
 }
 
 async function fetchFromWebflow(
