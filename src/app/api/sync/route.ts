@@ -99,15 +99,30 @@ interface SyncEnv {
 // Route handler
 // ============================================
 
+// Support both GET and POST since Webflow's proxy may block POST
+export async function GET(request: Request) {
+  return handleSync(request);
+}
+
 export async function POST(request: Request) {
+  return handleSync(request);
+}
+
+async function handleSync(request: Request) {
   const { env } = await getCloudflareContext({ async: true });
   const typedEnv = env as unknown as SyncEnv;
 
-  // Check for authorization
+  // Check for authorization via header or query param
   const authHeader = request.headers.get('authorization');
+  const { searchParams } = new URL(request.url);
+  const queryToken = searchParams.get('token');
   const expectedToken = typedEnv.WEBFLOW_SITE_API_TOKEN;
 
-  if (!authHeader || authHeader !== `Bearer ${expectedToken}`) {
+  const isAuthorized =
+    authHeader === `Bearer ${expectedToken}` ||
+    queryToken === expectedToken;
+
+  if (!isAuthorized) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
