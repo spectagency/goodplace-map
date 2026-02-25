@@ -36,21 +36,28 @@ export async function getAllTags(env: WebflowEnv): Promise<{
     const { env: cfEnv } = await getCloudflareContext({ async: true });
     const db = getDb(cfEnv.DB);
 
-    const allDbTags = await db
-      .select()
-      .from(tags)
-      .orderBy(asc(tags.name));
+    // Query junction tables to find which tags belong to each content type
+    const [storyTagList, placeTagList, initiativeTagList] = await Promise.all([
+      db.selectDistinct({ id: tags.id, name: tags.name, slug: tags.slug })
+        .from(tags)
+        .innerJoin(storyTags, eq(tags.id, storyTags.tagId))
+        .orderBy(asc(tags.name)),
+      db.selectDistinct({ id: tags.id, name: tags.name, slug: tags.slug })
+        .from(tags)
+        .innerJoin(placeTags, eq(tags.id, placeTags.tagId))
+        .orderBy(asc(tags.name)),
+      db.selectDistinct({ id: tags.id, name: tags.name, slug: tags.slug })
+        .from(tags)
+        .innerJoin(initiativeTags, eq(tags.id, initiativeTags.tagId))
+        .orderBy(asc(tags.name)),
+    ]);
 
-    if (allDbTags.length > 0) {
-      // DB has tags — we return them all as each category since
-      // the DB doesn't track which tag collection they came from.
-      // The page merges them anyway, so this is fine.
-      const mapped: Tag[] = allDbTags.map((t) => ({
-        id: t.id,
-        name: t.name,
-        slug: t.slug,
-      }));
-      return { storyTags: mapped, placeTags: mapped, initiativeTags: mapped };
+    if (storyTagList.length > 0 || placeTagList.length > 0 || initiativeTagList.length > 0) {
+      return {
+        storyTags: storyTagList,
+        placeTags: placeTagList,
+        initiativeTags: initiativeTagList,
+      };
     }
   } catch (e) {
     console.error('DB tag fetch failed, falling back to Webflow API:', e);
