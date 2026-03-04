@@ -76,7 +76,7 @@ async function main() {
     }
 
     console.log(`Creating webhook: ${triggerType} → ${WEBHOOK_URL}`);
-    const result = await createWebhook(triggerType);
+    const result = (await createWebhook(triggerType)) as { id: string };
     console.log(`  Created: ${result.id}`);
   }
 
