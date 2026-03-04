@@ -128,34 +128,40 @@ async function handleSync(request: Request) {
 
   const db = getDb(env.DB);
 
+  // Support syncing a single collection type via ?type= parameter
+  // Valid types: tags, stories, places, initiatives, or omit for all
+  const syncType = searchParams.get('type');
+
   try {
     const results: Record<string, number> = {};
 
-    // Sync all tag collections first (content items reference tags)
-    if (typedEnv.WEBFLOW_STORY_TAGS_COLLECTION_ID) {
-      results.storyTags = await syncTagsFromCollection(db, typedEnv.WEBFLOW_STORY_TAGS_COLLECTION_ID, expectedToken);
-    }
-    if (typedEnv.WEBFLOW_PLACE_TAGS_COLLECTION_ID) {
-      results.placeTags = await syncTagsFromCollection(db, typedEnv.WEBFLOW_PLACE_TAGS_COLLECTION_ID, expectedToken);
-    }
-    if (typedEnv.WEBFLOW_INITIATIVE_TAGS_COLLECTION_ID) {
-      results.initiativeTags = await syncTagsFromCollection(db, typedEnv.WEBFLOW_INITIATIVE_TAGS_COLLECTION_ID, expectedToken);
+    // Sync tags (always first when doing all, or when type=tags)
+    if (!syncType || syncType === 'tags') {
+      if (typedEnv.WEBFLOW_STORY_TAGS_COLLECTION_ID) {
+        results.storyTags = await syncTagsFromCollection(db, typedEnv.WEBFLOW_STORY_TAGS_COLLECTION_ID, expectedToken);
+      }
+      if (typedEnv.WEBFLOW_PLACE_TAGS_COLLECTION_ID) {
+        results.placeTags = await syncTagsFromCollection(db, typedEnv.WEBFLOW_PLACE_TAGS_COLLECTION_ID, expectedToken);
+      }
+      if (typedEnv.WEBFLOW_INITIATIVE_TAGS_COLLECTION_ID) {
+        results.initiativeTags = await syncTagsFromCollection(db, typedEnv.WEBFLOW_INITIATIVE_TAGS_COLLECTION_ID, expectedToken);
+      }
     }
 
-    // Sync all content types
-    if (typedEnv.WEBFLOW_STORIES_COLLECTION_ID) {
+    // Sync content types
+    if ((!syncType || syncType === 'stories') && typedEnv.WEBFLOW_STORIES_COLLECTION_ID) {
       results.stories = await syncStories(db, typedEnv.WEBFLOW_STORIES_COLLECTION_ID, expectedToken);
     }
-    if (typedEnv.WEBFLOW_PLACES_COLLECTION_ID) {
+    if ((!syncType || syncType === 'places') && typedEnv.WEBFLOW_PLACES_COLLECTION_ID) {
       results.places = await syncPlaces(db, typedEnv.WEBFLOW_PLACES_COLLECTION_ID, expectedToken);
     }
-    if (typedEnv.WEBFLOW_INITIATIVES_COLLECTION_ID) {
+    if ((!syncType || syncType === 'initiatives') && typedEnv.WEBFLOW_INITIATIVES_COLLECTION_ID) {
       results.initiatives = await syncInitiatives(db, typedEnv.WEBFLOW_INITIATIVES_COLLECTION_ID, expectedToken);
     }
 
     return Response.json({
       success: true,
-      message: 'Sync complete',
+      message: syncType ? `Sync complete for: ${syncType}` : 'Sync complete',
       results,
     });
   } catch (error) {
