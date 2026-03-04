@@ -155,10 +155,20 @@ export async function POST(request: Request) {
 
   const bodyText = await request.text();
 
-  // Verify signature if secret is configured
-  const webhookSecret = typedEnv.WEBFLOW_WEBHOOK_SECRET || '';
-  if (webhookSecret) {
-    const isValid = await verifySignature(timestamp, bodyText, signature, webhookSecret);
+  // Verify signature if secrets are configured (comma-separated, one per webhook)
+  const webhookSecrets = (typedEnv.WEBFLOW_WEBHOOK_SECRET || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  if (webhookSecrets.length > 0) {
+    let isValid = false;
+    for (const secret of webhookSecrets) {
+      if (await verifySignature(timestamp, bodyText, signature, secret)) {
+        isValid = true;
+        break;
+      }
+    }
     if (!isValid) {
       return new Response('Invalid signature', { status: 401 });
     }
