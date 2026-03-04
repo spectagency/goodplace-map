@@ -243,6 +243,13 @@ const filterByContentType = (items: MapItem[], typeFilters: ContentType[]): MapI
   return items.filter((item) => typeFilters.includes(item.type));
 };
 
+// Get the most relevant date for sorting (newest first)
+const getSortDate = (item: MapItem): string => {
+  if (item.type === 'podcast' && item.publishedAt) return item.publishedAt;
+  if (item.type === 'initiative' && item.eventDate) return item.eventDate;
+  return item.createdAt || '';
+};
+
 // Get filtered map items (by both tags and content type)
 export const useFilteredMapItems = () => {
   const { podcasts, places, initiatives, listView } = useAppStore();
@@ -255,6 +262,9 @@ export const useFilteredMapItems = () => {
 
   // Then filter by tags
   items = filterByTags(items, activeTagFilters);
+
+  // Sort chronologically (newest first)
+  items.sort((a, b) => getSortDate(b).localeCompare(getSortDate(a)));
 
   return items;
 };
