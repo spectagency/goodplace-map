@@ -21,19 +21,17 @@ export function TagFilter({ tags }: TagFilterProps) {
     clearContentTypeFilters,
   } = useAppStore();
 
-  // When filtering by content type, only show tags that are actually used by items of that type
-  const visibleTags = activeContentTypeFilters.length > 0
-    ? (() => {
-        const usedTagIds = new Set<string>();
-        if (activeContentTypeFilters.includes('podcast'))
-          podcasts.forEach((p) => p.tags.forEach((t) => usedTagIds.add(t.id)));
-        if (activeContentTypeFilters.includes('place'))
-          places.forEach((p) => p.tags.forEach((t) => usedTagIds.add(t.id)));
-        if (activeContentTypeFilters.includes('initiative'))
-          initiatives.forEach((i) => i.tags.forEach((t) => usedTagIds.add(t.id)));
-        return tags.filter((tag) => usedTagIds.has(tag.id));
-      })()
-    : tags;
+  // Only show tags that are actually used by at least one item (of the selected types, or all)
+  const visibleTags = (() => {
+    const usedTagIds = new Set<string>();
+    const filterPodcasts = activeContentTypeFilters.length === 0 || activeContentTypeFilters.includes('podcast');
+    const filterPlaces = activeContentTypeFilters.length === 0 || activeContentTypeFilters.includes('place');
+    const filterInitiatives = activeContentTypeFilters.length === 0 || activeContentTypeFilters.includes('initiative');
+    if (filterPodcasts) podcasts.forEach((p) => p.tags.forEach((t) => usedTagIds.add(t.id)));
+    if (filterPlaces) places.forEach((p) => p.tags.forEach((t) => usedTagIds.add(t.id)));
+    if (filterInitiatives) initiatives.forEach((i) => i.tags.forEach((t) => usedTagIds.add(t.id)));
+    return tags.filter((tag) => usedTagIds.has(tag.id));
+  })();
 
   const clearAllFilters = () => {
     clearTagFilters();
