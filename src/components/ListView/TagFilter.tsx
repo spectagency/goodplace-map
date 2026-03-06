@@ -13,12 +13,27 @@ const CONTENT_TYPES: ContentType[] = ['podcast', 'place', 'initiative'];
 export function TagFilter({ tags }: TagFilterProps) {
   const activeTagFilters = useActiveTagFilters();
   const activeContentTypeFilters = useActiveContentTypeFilters();
+  const { podcasts, places, initiatives } = useAppStore();
   const {
     toggleTagFilter,
     clearTagFilters,
     toggleContentTypeFilter,
     clearContentTypeFilters,
   } = useAppStore();
+
+  // When filtering by content type, only show tags that are actually used by items of that type
+  const visibleTags = activeContentTypeFilters.length > 0
+    ? (() => {
+        const usedTagIds = new Set<string>();
+        if (activeContentTypeFilters.includes('podcast'))
+          podcasts.forEach((p) => p.tags.forEach((t) => usedTagIds.add(t.id)));
+        if (activeContentTypeFilters.includes('place'))
+          places.forEach((p) => p.tags.forEach((t) => usedTagIds.add(t.id)));
+        if (activeContentTypeFilters.includes('initiative'))
+          initiatives.forEach((i) => i.tags.forEach((t) => usedTagIds.add(t.id)));
+        return tags.filter((tag) => usedTagIds.has(tag.id));
+      })()
+    : tags;
 
   const clearAllFilters = () => {
     clearTagFilters();
@@ -64,7 +79,7 @@ export function TagFilter({ tags }: TagFilterProps) {
       </div>
 
       {/* Tag filters */}
-      {tags.length > 0 && (
+      {visibleTags.length > 0 && (
         <div>
           <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
             Tags
@@ -80,17 +95,17 @@ export function TagFilter({ tags }: TagFilterProps) {
             >
               All
             </button>
-            {tags.map((tag) => {
+            {visibleTags.map((tag) => {
               const isActive = activeTagFilters.includes(tag.id);
               return (
                 <button
                   key={tag.id}
                   onClick={() => toggleTagFilter(tag.id)}
-                  className="shrink-0 px-3 py-1.5 rounded-full text-sm font-medium uppercase transition-colors"
-                  style={{
-                    backgroundColor: isActive ? '#60977F' : '#60977F15',
-                    color: isActive ? 'white' : '#60977F',
-                  }}
+                  className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium uppercase transition-colors ${
+                    isActive
+                      ? 'bg-gray-800 text-white'
+                      : 'bg-black/5 text-gray-600 hover:bg-black/10'
+                  }`}
                 >
                   {tag.name}
                 </button>
