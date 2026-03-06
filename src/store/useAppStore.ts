@@ -245,12 +245,20 @@ const filterByContentType = (items: MapItem[], typeFilters: ContentType[]): MapI
   return items.filter((item) => typeFilters.includes(item.type));
 };
 
-// Sort by the content-specific date (newest first)
-const sortByDate = (items: MapItem[]): MapItem[] => {
+// Deterministic shuffle based on item IDs (stable across renders, random across page loads)
+const sessionSeed = Math.random();
+const stableHash = (str: string): number => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+  }
+  return hash;
+};
+const stableShuffle = (items: MapItem[]): MapItem[] => {
   return [...items].sort((a, b) => {
-    const dateA = (a.type === 'podcast' && a.publishedAt) || (a.type === 'initiative' && a.eventDate) || a.createdAt || '';
-    const dateB = (b.type === 'podcast' && b.publishedAt) || (b.type === 'initiative' && b.eventDate) || b.createdAt || '';
-    return dateB.localeCompare(dateA);
+    const ha = stableHash(a.id + sessionSeed);
+    const hb = stableHash(b.id + sessionSeed);
+    return ha - hb;
   });
 };
 
@@ -259,12 +267,8 @@ export const useFilteredMapItems = () => {
   const { podcasts, places, initiatives, listView } = useAppStore();
   const { activeTagFilters, activeContentTypeFilters } = listView;
 
-  // Sort each group independently, then concatenate: stories, places, initiatives
-  let items: MapItem[] = [
-    ...sortByDate(podcasts),
-    ...sortByDate(places),
-    ...sortByDate(initiatives),
-  ];
+  // Combine all items in random order (stable within session)
+  let items: MapItem[] = stableShuffle([...podcasts, ...places, ...initiatives]);
 
   // Filter by content type first
   items = filterByContentType(items, activeContentTypeFilters);
