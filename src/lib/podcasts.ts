@@ -20,7 +20,7 @@ interface WebflowEpisode {
     'youtube-link'?: { url: string } | string;
     'button-text'?: string;
     'published-date'?: string;
-    'episode-tags'?: string[];
+    'content-tags'?: string[];
   };
 }
 
@@ -66,7 +66,7 @@ function transformEpisode(
       : episode.fieldData['youtube-link'];
 
   // Map tag IDs to Tag objects
-  const podcastTags: Tag[] = (episode.fieldData['episode-tags'] || [])
+  const podcastTags: Tag[] = (episode.fieldData['content-tags'] || [])
     .map((tagId: string) => tagsMap.get(tagId))
     .filter((tag): tag is Tag => tag !== undefined);
 
@@ -92,21 +92,18 @@ function transformEpisode(
   };
 }
 
-export async function getStoryTagsFromWebflow(env: WebflowEnv): Promise<Tag[]> {
+export async function getTagsFromWebflow(env: WebflowEnv): Promise<Tag[]> {
   return fetchTagsFromCollection(
     env.WEBFLOW_SITE_API_TOKEN,
-    env.WEBFLOW_STORY_TAGS_COLLECTION_ID || ''
+    env.WEBFLOW_TAGS_COLLECTION_ID || ''
   );
 }
-
-// Re-export for backward compatibility
-export const getTagsFromWebflow = getStoryTagsFromWebflow;
 
 // Legacy function for backwards compatibility
 export async function getTags(): Promise<Tag[]> {
   return fetchTagsFromCollection(
     process.env.WEBFLOW_SITE_API_TOKEN || '',
-    process.env.WEBFLOW_STORY_TAGS_COLLECTION_ID || ''
+    process.env.WEBFLOW_TAGS_COLLECTION_ID || ''
   );
 }
 
@@ -174,7 +171,7 @@ export async function getPodcasts(tags: Tag[]): Promise<Podcast[]> {
   const env: WebflowEnv = {
     WEBFLOW_SITE_API_TOKEN: process.env.WEBFLOW_SITE_API_TOKEN || '',
     WEBFLOW_STORIES_COLLECTION_ID: process.env.WEBFLOW_STORIES_COLLECTION_ID || '',
-    WEBFLOW_STORY_TAGS_COLLECTION_ID: process.env.WEBFLOW_STORY_TAGS_COLLECTION_ID,
+    WEBFLOW_TAGS_COLLECTION_ID: process.env.WEBFLOW_TAGS_COLLECTION_ID,
   };
   return getPodcastsFromWebflow(env, tags);
 }

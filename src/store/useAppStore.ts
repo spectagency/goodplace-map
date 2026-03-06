@@ -243,11 +243,13 @@ const filterByContentType = (items: MapItem[], typeFilters: ContentType[]): MapI
   return items.filter((item) => typeFilters.includes(item.type));
 };
 
-// Get the most relevant date for sorting (newest first)
-const getSortDate = (item: MapItem): string => {
-  if (item.type === 'podcast' && item.publishedAt) return item.publishedAt;
-  if (item.type === 'initiative' && item.eventDate) return item.eventDate;
-  return item.createdAt || '';
+// Sort by the content-specific date (newest first)
+const sortByDate = (items: MapItem[]): MapItem[] => {
+  return [...items].sort((a, b) => {
+    const dateA = (a.type === 'podcast' && a.publishedAt) || (a.type === 'initiative' && a.eventDate) || a.createdAt || '';
+    const dateB = (b.type === 'podcast' && b.publishedAt) || (b.type === 'initiative' && b.eventDate) || b.createdAt || '';
+    return dateB.localeCompare(dateA);
+  });
 };
 
 // Get filtered map items (by both tags and content type)
@@ -255,16 +257,18 @@ export const useFilteredMapItems = () => {
   const { podcasts, places, initiatives, listView } = useAppStore();
   const { activeTagFilters, activeContentTypeFilters } = listView;
 
-  let items: MapItem[] = [...podcasts, ...places, ...initiatives];
+  // Sort each group independently, then concatenate: stories, places, initiatives
+  let items: MapItem[] = [
+    ...sortByDate(podcasts),
+    ...sortByDate(places),
+    ...sortByDate(initiatives),
+  ];
 
   // Filter by content type first
   items = filterByContentType(items, activeContentTypeFilters);
 
   // Then filter by tags
   items = filterByTags(items, activeTagFilters);
-
-  // Sort chronologically (newest first)
-  items.sort((a, b) => getSortDate(b).localeCompare(getSortDate(a)));
 
   return items;
 };

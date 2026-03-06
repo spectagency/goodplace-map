@@ -34,29 +34,13 @@ async function fetchFromDatabase(env: { DB: D1Database }): Promise<Response> {
 
 async function fetchFromWebflow(env: WebflowEnv): Promise<Response> {
   const token = env.WEBFLOW_SITE_API_TOKEN;
+  const collectionId = env.WEBFLOW_TAGS_COLLECTION_ID;
 
-  // Fetch tags from all tag collections in parallel
-  const collectionIds = [
-    env.WEBFLOW_STORY_TAGS_COLLECTION_ID,
-    env.WEBFLOW_PLACE_TAGS_COLLECTION_ID,
-    env.WEBFLOW_INITIATIVE_TAGS_COLLECTION_ID,
-  ].filter((id): id is string => !!id);
-
-  const tagArrays = await Promise.all(
-    collectionIds.map((id) => fetchTagsFromCollection(token, id))
-  );
-
-  // Deduplicate by ID
-  const allTagsMap = new Map<string, (typeof tagArrays)[0][0]>();
-  for (const tagArray of tagArrays) {
-    for (const tag of tagArray) {
-      allTagsMap.set(tag.id, tag);
-    }
+  if (!collectionId) {
+    return Response.json({ error: 'Missing WEBFLOW_TAGS_COLLECTION_ID' }, { status: 500 });
   }
 
-  const tagList = Array.from(allTagsMap.values()).sort((a, b) =>
-    a.name.localeCompare(b.name)
-  );
+  const tagList = await fetchTagsFromCollection(token, collectionId);
 
   return Response.json(tagList);
 }

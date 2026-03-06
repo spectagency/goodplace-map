@@ -28,11 +28,9 @@ export function mapTagIds(tagIds: string[], tagsMap: Map<string, Tag>): Tag[] {
 export interface WebflowEnv {
   WEBFLOW_SITE_API_TOKEN: string;
   WEBFLOW_STORIES_COLLECTION_ID: string;
-  WEBFLOW_STORY_TAGS_COLLECTION_ID?: string;
+  WEBFLOW_TAGS_COLLECTION_ID?: string;
   WEBFLOW_PLACES_COLLECTION_ID?: string;
-  WEBFLOW_PLACE_TAGS_COLLECTION_ID?: string;
   WEBFLOW_INITIATIVES_COLLECTION_ID?: string;
-  WEBFLOW_INITIATIVE_TAGS_COLLECTION_ID?: string;
 }
 
 // Fetch tags from a Webflow collection

@@ -49,7 +49,7 @@ interface WebflowPodcastFieldData {
   'location-coordinates'?: string;
   'location-name'?: string;
   'published-date'?: string;
-  'episode-tags'?: string[];
+  'content-tags'?: string[];
 }
 
 interface WebflowPlaceFieldData {
@@ -63,7 +63,7 @@ interface WebflowPlaceFieldData {
   'button-text'?: string;
   'location-coordinates'?: string;
   'location-name'?: string;
-  tags?: string[];
+  'content-tags'?: string[];
 }
 
 interface WebflowInitiativeFieldData {
@@ -77,7 +77,7 @@ interface WebflowInitiativeFieldData {
   'button-text-2'?: string;
   'location-coordinates'?: string;
   'location-name'?: string;
-  'initiative-tags-2'?: string[];
+  'content-tags'?: string[];
 }
 
 // ============================================
@@ -88,11 +88,9 @@ interface SyncEnv {
   DB: D1Database;
   WEBFLOW_SITE_API_TOKEN: string;
   WEBFLOW_STORIES_COLLECTION_ID: string;
-  WEBFLOW_STORY_TAGS_COLLECTION_ID?: string;
+  WEBFLOW_TAGS_COLLECTION_ID?: string;
   WEBFLOW_PLACES_COLLECTION_ID?: string;
-  WEBFLOW_PLACE_TAGS_COLLECTION_ID?: string;
   WEBFLOW_INITIATIVES_COLLECTION_ID?: string;
-  WEBFLOW_INITIATIVE_TAGS_COLLECTION_ID?: string;
 }
 
 // ============================================
@@ -137,14 +135,8 @@ async function handleSync(request: Request) {
 
     // Sync tags (always first when doing all, or when type=tags)
     if (!syncType || syncType === 'tags') {
-      if (typedEnv.WEBFLOW_STORY_TAGS_COLLECTION_ID) {
-        results.storyTags = await syncTagsFromCollection(db, typedEnv.WEBFLOW_STORY_TAGS_COLLECTION_ID, expectedToken);
-      }
-      if (typedEnv.WEBFLOW_PLACE_TAGS_COLLECTION_ID) {
-        results.placeTags = await syncTagsFromCollection(db, typedEnv.WEBFLOW_PLACE_TAGS_COLLECTION_ID, expectedToken);
-      }
-      if (typedEnv.WEBFLOW_INITIATIVE_TAGS_COLLECTION_ID) {
-        results.initiativeTags = await syncTagsFromCollection(db, typedEnv.WEBFLOW_INITIATIVE_TAGS_COLLECTION_ID, expectedToken);
+      if (typedEnv.WEBFLOW_TAGS_COLLECTION_ID) {
+        results.tags = await syncTagsFromCollection(db, typedEnv.WEBFLOW_TAGS_COLLECTION_ID, expectedToken);
       }
     }
 
@@ -361,7 +353,7 @@ async function syncStories(
     }
 
     // Sync tags
-    const tagIds = fieldData['episode-tags'] || [];
+    const tagIds = fieldData['content-tags'] || [];
     if (tagIds.length > 0) {
       await syncStoryTagJunction(db, storyId, tagIds);
     }
@@ -464,7 +456,7 @@ async function syncPlaces(
     }
 
     // Sync tags
-    const tagIds = fieldData.tags || [];
+    const tagIds = fieldData['content-tags'] || [];
     if (tagIds.length > 0) {
       await syncPlaceTagJunction(db, placeId, tagIds);
     }
@@ -567,7 +559,7 @@ async function syncInitiatives(
     }
 
     // Sync tags
-    const tagIds = fieldData['initiative-tags-2'] || [];
+    const tagIds = fieldData['content-tags'] || [];
     if (tagIds.length > 0) {
       await syncInitiativeTagJunction(db, initiativeId, tagIds);
     }

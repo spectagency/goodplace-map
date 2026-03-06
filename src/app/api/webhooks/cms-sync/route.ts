@@ -39,7 +39,7 @@ interface PodcastFieldData {
   'location-coordinates'?: string;
   'location-name'?: string;
   'published-date'?: string;
-  'episode-tags'?: string[];
+  'content-tags'?: string[];
 }
 
 interface PlaceFieldData {
@@ -53,7 +53,7 @@ interface PlaceFieldData {
   'button-text'?: string;
   'location-coordinates'?: string;
   'location-name'?: string;
-  tags?: string[];
+  'content-tags'?: string[];
 }
 
 interface InitiativeFieldData {
@@ -67,7 +67,7 @@ interface InitiativeFieldData {
   'button-text-2'?: string;
   'location-coordinates'?: string;
   'location-name'?: string;
-  'initiative-tags-2'?: string[];
+  'content-tags'?: string[];
 }
 
 interface TagFieldData {
@@ -85,9 +85,7 @@ interface WebhookEnv {
   WEBFLOW_STORIES_COLLECTION_ID: string;
   WEBFLOW_PLACES_COLLECTION_ID?: string;
   WEBFLOW_INITIATIVES_COLLECTION_ID?: string;
-  WEBFLOW_STORY_TAGS_COLLECTION_ID?: string;
-  WEBFLOW_PLACE_TAGS_COLLECTION_ID?: string;
-  WEBFLOW_INITIATIVE_TAGS_COLLECTION_ID?: string;
+  WEBFLOW_TAGS_COLLECTION_ID?: string;
 }
 
 // ============================================
@@ -188,14 +186,8 @@ export async function POST(request: Request) {
   if (typedEnv.WEBFLOW_INITIATIVES_COLLECTION_ID) {
     collectionMap.set(typedEnv.WEBFLOW_INITIATIVES_COLLECTION_ID, 'initiative');
   }
-  if (typedEnv.WEBFLOW_STORY_TAGS_COLLECTION_ID) {
-    collectionMap.set(typedEnv.WEBFLOW_STORY_TAGS_COLLECTION_ID, 'tag');
-  }
-  if (typedEnv.WEBFLOW_PLACE_TAGS_COLLECTION_ID) {
-    collectionMap.set(typedEnv.WEBFLOW_PLACE_TAGS_COLLECTION_ID, 'tag');
-  }
-  if (typedEnv.WEBFLOW_INITIATIVE_TAGS_COLLECTION_ID) {
-    collectionMap.set(typedEnv.WEBFLOW_INITIATIVE_TAGS_COLLECTION_ID, 'tag');
+  if (typedEnv.WEBFLOW_TAGS_COLLECTION_ID) {
+    collectionMap.set(typedEnv.WEBFLOW_TAGS_COLLECTION_ID, 'tag');
   }
 
   const contentType = collectionMap.get(payload.collectionId);
@@ -391,7 +383,7 @@ async function upsertStory(db: DbClient, payload: WebflowWebhookPayload['payload
   }
 
   // Sync tags
-  const tagIds = fieldData['episode-tags'] || [];
+  const tagIds = fieldData['content-tags'] || [];
   await syncStoryTagJunction(db, storyId, tagIds);
 }
 
@@ -489,7 +481,7 @@ async function upsertPlace(db: DbClient, payload: WebflowWebhookPayload['payload
   }
 
   // Sync tags
-  const tagIds = fieldData.tags || [];
+  const tagIds = fieldData['content-tags'] || [];
   await syncPlaceTagJunction(db, placeId, tagIds);
 }
 
@@ -587,7 +579,7 @@ async function upsertInitiative(db: DbClient, payload: WebflowWebhookPayload['pa
   }
 
   // Sync tags
-  const tagIds = fieldData['initiative-tags-2'] || [];
+  const tagIds = fieldData['content-tags'] || [];
   await syncInitiativeTagJunction(db, initiativeId, tagIds);
 }
 

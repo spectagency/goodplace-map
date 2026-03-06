@@ -94,7 +94,7 @@ async function fetchFromWebflow(
   const webflowEnv: WebflowEnv = {
     WEBFLOW_SITE_API_TOKEN: env.WEBFLOW_SITE_API_TOKEN,
     WEBFLOW_STORIES_COLLECTION_ID: env.WEBFLOW_STORIES_COLLECTION_ID,
-    WEBFLOW_STORY_TAGS_COLLECTION_ID: env.WEBFLOW_STORY_TAGS_COLLECTION_ID,
+    WEBFLOW_TAGS_COLLECTION_ID: env.WEBFLOW_TAGS_COLLECTION_ID,
   };
 
   // Fetch tags first (needed to map tag IDs to tag objects in podcasts)

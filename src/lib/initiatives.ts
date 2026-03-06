@@ -14,7 +14,7 @@ interface WebflowInitiative {
     'video-link'?: { url: string; metadata?: { thumbnail_url?: string } };
     'playlist-link-2'?: string;
     'button-text-2'?: string;
-    'initiative-tags-2'?: string[];
+    'content-tags'?: string[];
   };
 }
 
@@ -34,7 +34,7 @@ function transformInitiative(
   }
 
   // Map tag IDs to Tag objects
-  const initiativeTags: Tag[] = (item.fieldData['initiative-tags-2'] || [])
+  const initiativeTags: Tag[] = (item.fieldData['content-tags'] || [])
     .map((tagId: string) => tagsMap.get(tagId))
     .filter((tag): tag is Tag => tag !== undefined);
 
@@ -64,7 +64,7 @@ function transformInitiative(
 export async function getInitiativeTagsFromWebflow(env: WebflowEnv): Promise<Tag[]> {
   return fetchTagsFromCollection(
     env.WEBFLOW_SITE_API_TOKEN,
-    env.WEBFLOW_INITIATIVE_TAGS_COLLECTION_ID || ''
+    env.WEBFLOW_TAGS_COLLECTION_ID || ''
   );
 }
 
@@ -137,7 +137,7 @@ export async function getInitiatives(tags: Tag[]): Promise<Initiative[]> {
     WEBFLOW_SITE_API_TOKEN: process.env.WEBFLOW_SITE_API_TOKEN || '',
     WEBFLOW_STORIES_COLLECTION_ID: process.env.WEBFLOW_STORIES_COLLECTION_ID || '',
     WEBFLOW_INITIATIVES_COLLECTION_ID: process.env.WEBFLOW_INITIATIVES_COLLECTION_ID,
-    WEBFLOW_INITIATIVE_TAGS_COLLECTION_ID: process.env.WEBFLOW_INITIATIVE_TAGS_COLLECTION_ID,
+    WEBFLOW_TAGS_COLLECTION_ID: process.env.WEBFLOW_TAGS_COLLECTION_ID,
   };
   return getInitiativesFromWebflow(env, tags);
 }

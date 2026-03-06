@@ -19,9 +19,9 @@ import {
 import { asc, desc, eq } from 'drizzle-orm';
 import type { Podcast, Place, Initiative, Tag } from '@/types';
 import type { WebflowEnv } from './shared';
-import { getPodcastsFromWebflow, getStoryTagsFromWebflow } from './podcasts';
-import { getPlacesFromWebflow, getPlaceTagsFromWebflow } from './places';
-import { getInitiativesFromWebflow, getInitiativeTagsFromWebflow } from './initiatives';
+import { getPodcastsFromWebflow, getTagsFromWebflow } from './podcasts';
+import { getPlacesFromWebflow } from './places';
+import { getInitiativesFromWebflow } from './initiatives';
 
 // ============================================
 // Tags
@@ -63,13 +63,9 @@ export async function getAllTags(env: WebflowEnv): Promise<{
     console.error('DB tag fetch failed, falling back to Webflow API:', e);
   }
 
-  // Fallback: Webflow API
-  const [st, pt, it] = await Promise.all([
-    getStoryTagsFromWebflow(env),
-    getPlaceTagsFromWebflow(env),
-    getInitiativeTagsFromWebflow(env),
-  ]);
-  return { storyTags: st, placeTags: pt, initiativeTags: it };
+  // Fallback: Webflow API — single central tag collection, shared across all content types
+  const allTags = await getTagsFromWebflow(env);
+  return { storyTags: allTags, placeTags: allTags, initiativeTags: allTags };
 }
 
 // ============================================

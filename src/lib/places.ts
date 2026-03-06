@@ -14,7 +14,7 @@ interface WebflowPlace {
     'youtube-link'?: { url: string } | string;
     'website-link'?: string;
     'button-text'?: string;
-    tags?: string[];
+    'content-tags'?: string[];
   };
 }
 
@@ -34,7 +34,7 @@ function transformPlace(
   }
 
   // Map tag IDs to Tag objects
-  const placeTags: Tag[] = (item.fieldData.tags || [])
+  const placeTags: Tag[] = (item.fieldData['content-tags'] || [])
     .map((tagId: string) => tagsMap.get(tagId))
     .filter((tag): tag is Tag => tag !== undefined);
 
@@ -70,7 +70,7 @@ function transformPlace(
 export async function getPlaceTagsFromWebflow(env: WebflowEnv): Promise<Tag[]> {
   return fetchTagsFromCollection(
     env.WEBFLOW_SITE_API_TOKEN,
-    env.WEBFLOW_PLACE_TAGS_COLLECTION_ID || ''
+    env.WEBFLOW_TAGS_COLLECTION_ID || ''
   );
 }
 
@@ -143,7 +143,7 @@ export async function getPlaces(tags: Tag[]): Promise<Place[]> {
     WEBFLOW_SITE_API_TOKEN: process.env.WEBFLOW_SITE_API_TOKEN || '',
     WEBFLOW_STORIES_COLLECTION_ID: process.env.WEBFLOW_STORIES_COLLECTION_ID || '',
     WEBFLOW_PLACES_COLLECTION_ID: process.env.WEBFLOW_PLACES_COLLECTION_ID,
-    WEBFLOW_PLACE_TAGS_COLLECTION_ID: process.env.WEBFLOW_PLACE_TAGS_COLLECTION_ID,
+    WEBFLOW_TAGS_COLLECTION_ID: process.env.WEBFLOW_TAGS_COLLECTION_ID,
   };
   return getPlacesFromWebflow(env, tags);
 }

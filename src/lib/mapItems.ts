@@ -1,8 +1,8 @@
 import type { MapItem, Podcast, Place, Initiative, Tag, ContentType } from '@/types';
 import type { WebflowEnv } from './shared';
-import { getPodcastsFromWebflow, getStoryTagsFromWebflow } from './podcasts';
-import { getPlacesFromWebflow, getPlaceTagsFromWebflow } from './places';
-import { getInitiativesFromWebflow, getInitiativeTagsFromWebflow } from './initiatives';
+import { getPodcastsFromWebflow, getTagsFromWebflow } from './podcasts';
+import { getPlacesFromWebflow } from './places';
+import { getInitiativesFromWebflow } from './initiatives';
 
 export interface AllMapItems {
   podcasts: Podcast[];
@@ -24,26 +24,15 @@ export async function getAllMapItemsFromWebflow(
   const shouldFetchPlaces = !filterContentTypes || filterContentTypes.includes('place');
   const shouldFetchInitiatives = !filterContentTypes || filterContentTypes.includes('initiative');
 
-  // Fetch tags per content type in parallel
-  const [storyTags, placeTags, initiativeTags] = await Promise.all([
-    shouldFetchPodcasts ? getStoryTagsFromWebflow(env) : Promise.resolve([]),
-    shouldFetchPlaces ? getPlaceTagsFromWebflow(env) : Promise.resolve([]),
-    shouldFetchInitiatives ? getInitiativeTagsFromWebflow(env) : Promise.resolve([]),
-  ]);
+  // Fetch tags from central collection
+  const tags = await getTagsFromWebflow(env);
 
-  // Fetch all content types in parallel (each with its own tags)
+  // Fetch all content types in parallel (all sharing the same tags)
   const [podcasts, places, initiatives] = await Promise.all([
-    shouldFetchPodcasts ? getPodcastsFromWebflow(env, storyTags, filterTagIds) : Promise.resolve([]),
-    shouldFetchPlaces ? getPlacesFromWebflow(env, placeTags, filterTagIds) : Promise.resolve([]),
-    shouldFetchInitiatives ? getInitiativesFromWebflow(env, initiativeTags, filterTagIds) : Promise.resolve([]),
+    shouldFetchPodcasts ? getPodcastsFromWebflow(env, tags, filterTagIds) : Promise.resolve([]),
+    shouldFetchPlaces ? getPlacesFromWebflow(env, tags, filterTagIds) : Promise.resolve([]),
+    shouldFetchInitiatives ? getInitiativesFromWebflow(env, tags, filterTagIds) : Promise.resolve([]),
   ]);
-
-  // Merge all tags (deduplicated by ID)
-  const allTagsMap = new Map<string, Tag>();
-  for (const tag of [...storyTags, ...placeTags, ...initiativeTags]) {
-    allTagsMap.set(tag.id, tag);
-  }
-  const tags = Array.from(allTagsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
 
   return {
     podcasts,
