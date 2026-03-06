@@ -4,7 +4,6 @@ import { ListViewModal } from '@/components/ListView';
 import { StoreInitializer } from '@/components/StoreInitializer';
 import { NotFoundToast } from '@/components/UI';
 import { getAllTags, getAllStories, getAllPlaces, getAllInitiatives } from '@/lib/data';
-import type { Tag } from '@/types';
 import type { WebflowEnv } from '@/lib/shared';
 
 function getEnv(): WebflowEnv {
@@ -21,21 +20,14 @@ export default async function Home() {
   const env = getEnv();
 
   // Fetch tags (DB first, Webflow API fallback)
-  const { storyTags, placeTags, initiativeTags } = await getAllTags(env);
+  const tags = await getAllTags(env);
 
   // Fetch all content types (DB first, Webflow API fallback)
   const [podcasts, places, initiatives] = await Promise.all([
-    getAllStories(env, storyTags),
-    getAllPlaces(env, placeTags),
-    getAllInitiatives(env, initiativeTags),
+    getAllStories(env, tags),
+    getAllPlaces(env, tags),
+    getAllInitiatives(env, tags),
   ]);
-
-  // Merge all tags for the filter UI, annotated with their content type
-  const allTagsMap = new Map<string, Tag>();
-  for (const tag of storyTags) allTagsMap.set(tag.id, { ...tag, contentType: 'podcast' });
-  for (const tag of placeTags) allTagsMap.set(tag.id, { ...tag, contentType: 'place' });
-  for (const tag of initiativeTags) allTagsMap.set(tag.id, { ...tag, contentType: 'initiative' });
-  const tags = Array.from(allTagsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <main className="relative w-full h-screen overflow-hidden">

@@ -27,45 +27,22 @@ import { getInitiativesFromWebflow } from './initiatives';
 // Tags
 // ============================================
 
-export async function getAllTags(env: WebflowEnv): Promise<{
-  storyTags: Tag[];
-  placeTags: Tag[];
-  initiativeTags: Tag[];
-}> {
+export async function getAllTags(env: WebflowEnv): Promise<Tag[]> {
   try {
     const { env: cfEnv } = await getCloudflareContext({ async: true });
     const db = getDb(cfEnv.DB);
 
-    // Query junction tables to find which tags belong to each content type
-    const [storyTagList, placeTagList, initiativeTagList] = await Promise.all([
-      db.selectDistinct({ id: tags.id, name: tags.name, slug: tags.slug })
-        .from(tags)
-        .innerJoin(storyTags, eq(tags.id, storyTags.tagId))
-        .orderBy(asc(tags.name)),
-      db.selectDistinct({ id: tags.id, name: tags.name, slug: tags.slug })
-        .from(tags)
-        .innerJoin(placeTags, eq(tags.id, placeTags.tagId))
-        .orderBy(asc(tags.name)),
-      db.selectDistinct({ id: tags.id, name: tags.name, slug: tags.slug })
-        .from(tags)
-        .innerJoin(initiativeTags, eq(tags.id, initiativeTags.tagId))
-        .orderBy(asc(tags.name)),
-    ]);
+    const tagList = await db
+      .select({ id: tags.id, name: tags.name, slug: tags.slug })
+      .from(tags)
+      .orderBy(asc(tags.name));
 
-    if (storyTagList.length > 0 || placeTagList.length > 0 || initiativeTagList.length > 0) {
-      return {
-        storyTags: storyTagList,
-        placeTags: placeTagList,
-        initiativeTags: initiativeTagList,
-      };
-    }
+    if (tagList.length > 0) return tagList;
   } catch (e) {
     console.error('DB tag fetch failed, falling back to Webflow API:', e);
   }
 
-  // Fallback: Webflow API — single central tag collection, shared across all content types
-  const allTags = await getTagsFromWebflow(env);
-  return { storyTags: allTags, placeTags: allTags, initiativeTags: allTags };
+  return getTagsFromWebflow(env);
 }
 
 // ============================================

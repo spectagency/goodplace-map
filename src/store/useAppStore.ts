@@ -187,24 +187,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   toggleContentTypeFilter: (type: ContentType) =>
     set((state) => {
-      const { activeContentTypeFilters, activeTagFilters } = state.listView;
+      const { activeContentTypeFilters } = state.listView;
       const newTypeFilters = activeContentTypeFilters.includes(type)
         ? activeContentTypeFilters.filter((t) => t !== type)
         : [...activeContentTypeFilters, type];
 
-      // Clear tag filters for content types that are now hidden
-      let newTagFilters = activeTagFilters;
-      if (newTypeFilters.length > 0 && activeTagFilters.length > 0) {
-        const visibleTagIds = new Set(
-          state.tags
-            .filter((tag) => !tag.contentType || newTypeFilters.includes(tag.contentType))
-            .map((tag) => tag.id)
-        );
-        newTagFilters = activeTagFilters.filter((id) => visibleTagIds.has(id));
-      }
-
       return {
-        listView: { ...state.listView, activeContentTypeFilters: newTypeFilters, activeTagFilters: newTagFilters },
+        listView: { ...state.listView, activeContentTypeFilters: newTypeFilters },
       };
     }),
 

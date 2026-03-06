@@ -37,7 +37,6 @@ export interface Tag {
   id: string;
   name: string;
   slug: string | null;
-  contentType?: ContentType; // Which content type collection this tag belongs to
 }
 
 // Base interface for all map items
