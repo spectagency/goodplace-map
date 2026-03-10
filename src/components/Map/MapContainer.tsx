@@ -233,7 +233,7 @@ export function MapContainer({
         }} />
         <HideNativeClusterLayers />
         <AdaptiveClusterZoom />
-        <MapControls position="bottom-right" showZoom />
+        <MapControls position="bottom-right" showZoom showGlobe />
         <FitBoundsOnLoad items={filteredItems} />
         <CleanupMapStyle />
         <HideClusterLayersWhenCardOpen isCardOpen={isCardOpen} />

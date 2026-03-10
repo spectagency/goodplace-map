@@ -16,7 +16,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { X, Minus, Plus, Locate, Maximize, Loader2 } from "lucide-react";
+import { X, Minus, Plus, Locate, Maximize, Loader2, Globe } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -603,6 +603,8 @@ type MapControlsProps = {
   showLocate?: boolean;
   /** Show fullscreen toggle button (default: false) */
   showFullscreen?: boolean;
+  /** Show globe zoom button to zoom out to z3 (default: false) */
+  showGlobe?: boolean;
   /** Additional CSS classes for the controls container */
   className?: string;
   /** Callback with user coordinates when located */
@@ -657,6 +659,7 @@ function MapControls({
   showCompass = false,
   showLocate = false,
   showFullscreen = false,
+  showGlobe = false,
   className,
   onLocate,
 }: MapControlsProps) {
@@ -699,6 +702,10 @@ function MapControls({
       );
     }
   }, [map, onLocate]);
+
+  const handleGlobe = useCallback(() => {
+    map?.zoomTo(3, { duration: 500 });
+  }, [map]);
 
   const handleFullscreen = useCallback(() => {
     const container = map?.getContainer();
@@ -745,6 +752,13 @@ function MapControls({
             ) : (
               <Locate className="size-4" />
             )}
+          </ControlButton>
+        </ControlGroup>
+      )}
+      {showGlobe && (
+        <ControlGroup>
+          <ControlButton onClick={handleGlobe} label="Zoom out to globe">
+            <Globe className="size-4" />
           </ControlButton>
         </ControlGroup>
       )}
