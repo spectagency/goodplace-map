@@ -148,7 +148,7 @@ export function PopupCard() {
     if (!item?.slug) return '';
     const config = CONTENT_TYPE_CONFIG[item.type];
     const baseUrl = parentOrigin || window.location.origin;
-    return `${baseUrl}?share=${config.sharePathPrefix}/${item.slug}`;
+    return `${baseUrl}?share=${encodeURIComponent(`${config.sharePathPrefix}/${item.slug}`)}`;
   };
 
   // Handle share button click - copy to clipboard
