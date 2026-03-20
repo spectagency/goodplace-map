@@ -2,19 +2,24 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useAppStore, useSelectedItem, useIsCardOpen } from '@/store/useAppStore';
-import { CloseButton, TagPill, Button, YouTubeIcon, Overlay } from '@/components/UI';
+import { CloseButton, TagPill, Button, YouTubeIcon, VimeoIcon, Overlay } from '@/components/UI';
 import { isPodcast, isPlace, isInitiative, CONTENT_TYPE_CONFIG } from '@/types';
 
 
 // Card dimensions for pin positioning calculations
 export const CARD_MAX_HEIGHT_VH = 80;
 
-function getYouTubeEmbedUrl(url: string | null | undefined): string | null {
+type VideoEmbed = { url: string; provider: 'youtube' | 'vimeo' } | null;
+
+function getVideoEmbedUrl(url: string | null | undefined): VideoEmbed {
   if (!url || typeof url !== 'string') return null;
-  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?]+)/);
-  if (match) {
-    return `https://www.youtube.com/embed/${match[1]}`;
-  }
+
+  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?]+)/);
+  if (ytMatch) return { url: `https://www.youtube.com/embed/${ytMatch[1]}`, provider: 'youtube' };
+
+  const vimeoMatch = url.match(/(?:vimeo\.com\/|player\.vimeo\.com\/video\/)(\d+)/);
+  if (vimeoMatch) return { url: `https://player.vimeo.com/video/${vimeoMatch[1]}`, provider: 'vimeo' };
+
   return null;
 }
 
@@ -212,9 +217,9 @@ export function PopupCard() {
 
   // Get type-specific values
   const typeConfig = CONTENT_TYPE_CONFIG[item.type];
-  // Get YouTube embed URL (all content types can have a YouTube link)
-  const youtubeEmbedUrl = item.youtubeLink
-    ? getYouTubeEmbedUrl(item.youtubeLink)
+  // Get video embed URL (auto-detects YouTube or Vimeo)
+  const videoEmbed = item.youtubeLink
+    ? getVideoEmbedUrl(item.youtubeLink)
     : null;
   // Primary button text: CMS-customizable with per-type default
   const primaryButtonText = item.buttonText || typeConfig.defaultButtonText;
@@ -245,11 +250,11 @@ export function PopupCard() {
             aria-modal="true"
             aria-labelledby="card-title"
           >
-            {/* Media section - YouTube embed takes priority, then cover image */}
-            {youtubeEmbedUrl ? (
+            {/* Media section - Video embed takes priority, then cover image */}
+            {videoEmbed ? (
               <div className="relative w-full aspect-video bg-gray-100 flex-shrink-0 rounded-[8px] sm:rounded-[12px] overflow-hidden">
                 <iframe
-                  src={youtubeEmbedUrl}
+                  src={videoEmbed.url}
                   className="w-full h-full"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
@@ -355,10 +360,10 @@ export function PopupCard() {
                       )}
                     </Button>
                   </div>
-                  {item.youtubeLink && !youtubeEmbedUrl && (
-                    <Button href={item.youtubeLink} variant="youtube" fullWidth>
-                      <YouTubeIcon />
-                      Watch on YouTube
+                  {item.youtubeLink && !videoEmbed && (
+                    <Button href={item.youtubeLink} variant={item.youtubeLink.includes('vimeo') ? 'vimeo' : 'youtube'} fullWidth>
+                      {item.youtubeLink.includes('vimeo') ? <VimeoIcon /> : <YouTubeIcon />}
+                      {item.youtubeLink.includes('vimeo') ? 'Watch on Vimeo' : 'Watch on YouTube'}
                     </Button>
                   )}
                 </>

@@ -3,7 +3,7 @@ import { ReactNode, ButtonHTMLAttributes } from 'react';
 interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'className'> {
   children: ReactNode;
   href?: string;
-  variant?: 'spotify' | 'youtube' | 'secondary';
+  variant?: 'spotify' | 'youtube' | 'vimeo' | 'secondary';
   className?: string;
   fullWidth?: boolean;
 }
@@ -11,6 +11,7 @@ interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'cla
 const variantStyles = {
   spotify: 'bg-[#60977F] hover:bg-[#4a7a65] text-white',
   youtube: 'bg-[#FF0000] hover:bg-[#cc0000] text-white',
+  vimeo: 'bg-[#1AB7EA] hover:bg-[#1397c2] text-white',
   secondary: 'bg-gray-100 hover:bg-gray-200 text-gray-800',
 };
 
@@ -67,6 +68,15 @@ export function YouTubeIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
       <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+    </svg>
+  );
+}
+
+// Vimeo icon component
+export function VimeoIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M23.977 6.416c-.105 2.338-1.739 5.543-4.894 9.609C15.906 19.988 13.118 22 10.814 22c-1.427 0-2.634-1.317-3.622-3.953-.659-2.418-1.317-4.835-1.977-7.252-.732-2.636-1.518-3.953-2.359-3.953-.183 0-.823.385-1.922 1.153L0 6.813c1.21-1.063 2.402-2.128 3.577-3.19C5.17 2.175 6.363 1.468 7.127 1.407c1.872-.18 3.023 1.1 3.454 3.84.465 2.955.787 4.793.97 5.516.538 2.447 1.13 3.671 1.774 3.671.502 0 1.256-.794 2.264-2.383 1.004-1.589 1.543-2.798 1.617-3.628.144-1.372-.396-2.058-1.617-2.058-.576 0-1.169.131-1.781.397 1.183-3.871 3.441-5.751 6.776-5.637 2.473.068 3.64 1.674 3.493 4.491z" />
     </svg>
   );
 }
