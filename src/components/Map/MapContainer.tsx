@@ -483,6 +483,32 @@ function SplitColorCluster({
   );
 }
 
+const DENSITY_RADIUS_KM = 100;
+
+function distanceKm(a: MapItem, b: MapItem): number {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(b.latitude - a.latitude);
+  const dLng = toRad(b.longitude - a.longitude);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.latitude)) * Math.cos(toRad(b.latitude)) * Math.sin(dLng / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.sqrt(h));
+}
+
+// Returns the items within DENSITY_RADIUS_KM of the item that has the most neighbours
+function findDensestCluster(items: MapItem[]): MapItem[] {
+  let best: MapItem[] = items;
+  let bestCount = 0;
+  for (const center of items) {
+    const neighbours = items.filter((p) => distanceKm(center, p) <= DENSITY_RADIUS_KM);
+    if (neighbours.length > bestCount) {
+      best = neighbours;
+      bestCount = neighbours.length;
+    }
+  }
+  return best;
+}
+
 // Component to fit bounds when items load
 function FitBoundsOnLoad({ items }: { items: MapItem[] }) {
   const { map, isLoaded } = useMap();
@@ -499,7 +525,7 @@ function FitBoundsOnLoad({ items }: { items: MapItem[] }) {
       return;
     }
 
-    // Calculate bounds
+    // Zoom level that fits all pins
     const lngs = items.map((p) => p.longitude);
     const lats = items.map((p) => p.latitude);
 
@@ -508,9 +534,19 @@ function FitBoundsOnLoad({ items }: { items: MapItem[] }) {
       [Math.max(...lngs), Math.max(...lats)],
     ];
 
-    map.fitBounds(bounds, {
-      padding: 50,
-      maxZoom: 11,
+    const camera = map.cameraForBounds(bounds, { padding: 50, maxZoom: 11 });
+
+    // Center on the densest group of pins rather than the middle of all pins,
+    // so far-flung items don't pull the initial view to an empty region
+    const densest = findDensestCluster(items);
+    const center: [number, number] = [
+      densest.reduce((sum, p) => sum + p.longitude, 0) / densest.length,
+      densest.reduce((sum, p) => sum + p.latitude, 0) / densest.length,
+    ];
+
+    map.easeTo({
+      center,
+      zoom: camera?.zoom ?? map.getZoom(),
       duration: 1000,
     });
 
