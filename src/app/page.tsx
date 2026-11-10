@@ -2,7 +2,7 @@ import { MapContainer } from '@/components/Map';
 import { PopupCard } from '@/components/Card';
 import { ListViewModal } from '@/components/ListView';
 import { StoreInitializer } from '@/components/StoreInitializer';
-import { NotFoundToast } from '@/components/UI';
+import { NotFoundToast, WelcomePopup } from '@/components/UI';
 import { getAllTags, getAllStories, getAllPlaces, getAllInitiatives } from '@/lib/data';
 import type { WebflowEnv } from '@/lib/shared';
 
@@ -36,6 +36,7 @@ export default async function Home() {
       <PopupCard />
       <ListViewModal />
       <NotFoundToast />
+      <WelcomePopup />
     </main>
   );
 }
